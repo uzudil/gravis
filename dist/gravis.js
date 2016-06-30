@@ -52346,18 +52346,19 @@
 	var ISLAND_FACTOR = 1.07; // 1.0 means no small islands; 2.0 leads to a lot
 	var PERLIN_MULT = 5;
 	var PERLIN_CAP = 0.3;
-	var SIMPLEX_MULT = 2;
-	var SIMPLEX_CAP = 0.3;
+	var SIMPLEX_MULT = 2.3;
+	var SIMPLEX_CAP = 0.25;
 	var BEACH_WIDTH = 2;
 	var ERODE_COUNT = 25;
 	var BORDER = 3;
+	var RIVER_COUNT = 10;
 	var MATERIAL = new _three2.default.MeshBasicMaterial({
 		color: 0xffffff,
 		side: _three2.default.DoubleSide,
 		vertexColors: _three2.default.FaceColors
 	});
 	var SIZE = 500;
-	var MOUNTAIN_RATIO = 0.45;
+	var MOUNTAIN_RATIO = 0.48;
 	var FOREST_RATIO = 0.55;
 	
 	var SEA = 0;
@@ -52365,8 +52366,12 @@
 	var MOUNTAIN = 2;
 	var FOREST = 3;
 	var BEACH = 4;
+	var LAKE = 5;
+	var RIVER = 6;
 	
-	var COLORS = [0x8080cc, 0x80cc80, 0x454240, 0x408840, 0x888840];
+	var COLORS = [0x7080ec, 0x80cc80, 0x454240, 0x408840, 0xeeeecc, 0x7080ec, 0x7080ec];
+	
+	var Z_AXIS = new _three2.default.Vector3(0, 0, 1);
 	
 	var OverMap = exports.OverMap = function () {
 		function OverMap(gravis) {
@@ -52399,6 +52404,10 @@
 				this.addMountains();
 				console.log("adding forests");
 				this.addForests();
+				console.log("adding lakes");
+				this.addLakes();
+				console.log("adding rivers");
+				this.addRivers();
 				console.log("updateing world object");
 				this.updateWorldObject();
 				console.log("done");
@@ -52451,7 +52460,7 @@
 				var noise = new _noisejs2.default.Noise(Math.random());
 				return function (q) {
 					var c = (noise.simplex2(q.x * SIMPLEX_MULT, q.y * SIMPLEX_MULT) + 1) / 2;
-					return c > SIMPLEX_CAP + SIMPLEX_CAP * q.length() * q.length();
+					return c > SIMPLEX_CAP + SIMPLEX_CAP * 2 * q.length() * q.length();
 				};
 			}
 		}, {
@@ -52529,10 +52538,16 @@
 		}, {
 			key: 'getLand',
 			value: function getLand() {
+				var _this = this;
+	
+				var isFree = arguments.length <= 0 || arguments[0] === undefined ? function (x, y) {
+					return _this.world[x][y] == LAND;
+				} : arguments[0];
+	
 				var land = [];
 				for (var x = 0; x < constants.WORLD_SIZE; x++) {
 					for (var y = 0; y < constants.WORLD_SIZE; y++) {
-						if (this.world[x][y] == LAND) {
+						if (isFree(x, y)) {
 							land.push([x, y]);
 						}
 					}
@@ -52564,6 +52579,63 @@
 					}
 				}
 				return false;
+			}
+		}, {
+			key: 'addLakes',
+			value: function addLakes() {
+				var sea = this.getSea();
+				for (var x = 0; x < constants.WORLD_SIZE; x++) {
+					for (var y = 0; y < constants.WORLD_SIZE; y++) {
+						var key = x + "," + y;
+						if (this.world[x][y] == SEA && sea[key] == null) this.world[x][y] = LAKE;
+					}
+				}
+			}
+		}, {
+			key: 'addRivers',
+			value: function addRivers() {
+				var _this2 = this;
+	
+				var land = this.getLand(function (x, y) {
+					return _this2.world[x][y] != SEA && _this2.world[x][y] != BEACH && _this2.world[x][y] != LAKE && x >= constants.WORLD_SIZE * .3 && y >= constants.WORLD_SIZE * .3 && x < constants.WORLD_SIZE * .7 && y < constants.WORLD_SIZE * .7;
+				});
+				for (var i = 0; i < RIVER_COUNT; i++) {
+					var index = Math.floor(Math.random() * land.length);
+	
+					var _land$index = _slicedToArray(land[index], 2);
+	
+					var x = _land$index[0];
+					var y = _land$index[1];
+	
+					this.drunkenLine(x, y, new _three2.default.Vector2((x - constants.WORLD_SIZE / 2) / constants.WORLD_SIZE / 2, (y - constants.WORLD_SIZE / 2) / constants.WORLD_SIZE / 2), RIVER, function (x, y) {
+						return [SEA, LAKE].indexOf(_this2.world[Math.round(x)][Math.round(y)]) >= 0;
+					});
+				}
+			}
+		}, {
+			key: 'drunkenLine',
+			value: function drunkenLine(x, y, m, blockType, stopWhen) {
+				var t = new _three2.default.Vector3();
+				var t2 = new _three2.default.Vector3(m.x, m.y, 0);
+				var np = new _three2.default.Vector2(x, y);
+				var mm = new _three2.default.Vector2(m.x, m.y);
+				while (!stopWhen(np.x, np.y)) {
+					this.world[Math.round(np.x)][Math.round(np.y)] = blockType;
+	
+					if (Math.random() > 0.7) {
+						// change direction by +/- 45 deg
+						t.set(mm.x, mm.y, 0);
+						t.applyAxisAngle(Z_AXIS, Math.random() * Math.PI / 2 - Math.PI / 4);
+	
+						// but not too far...
+						if (t.angleTo(t2) < Math.PI / 2) {
+							mm.set(t.x, t.y);
+						}
+					}
+	
+					// take a step
+					np.add(mm);
+				}
 			}
 		}, {
 			key: 'getSea',
