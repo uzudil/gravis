@@ -10,18 +10,19 @@ import Noise from 'noisejs';
 const ISLAND_FACTOR = 1.07;  // 1.0 means no small islands; 2.0 leads to a lot
 const PERLIN_MULT = 5;
 const PERLIN_CAP = 0.3;
-const SIMPLEX_MULT = 2;
-const SIMPLEX_CAP = 0.3;
+const SIMPLEX_MULT = 2.3;
+const SIMPLEX_CAP = 0.25;
 const BEACH_WIDTH = 2;
 const ERODE_COUNT = 25;
 const BORDER = 3;
+const RIVER_COUNT = 10;
 const MATERIAL = new THREE.MeshBasicMaterial({
 	color: 0xffffff,
 	side: THREE.DoubleSide,
 	vertexColors: THREE.FaceColors
 });
 const SIZE = 500;
-const MOUNTAIN_RATIO = 0.45;
+const MOUNTAIN_RATIO = 0.48;
 const FOREST_RATIO = 0.55;
 
 const SEA = 0;
@@ -29,14 +30,20 @@ const LAND = 1;
 const MOUNTAIN = 2;
 const FOREST = 3;
 const BEACH = 4;
+const LAKE = 5;
+const RIVER = 6;
 
 const COLORS = [
-	0x8080cc,
+	0x7080ec,
 	0x80cc80,
 	0x454240,
 	0x408840,
-	0x888840
+	0xeeeecc,
+	0x7080ec,
+	0x7080ec
 ];
+
+const Z_AXIS = new THREE.Vector3(0, 0, 1);
 
 export class OverMap {
 	constructor(gravis) {
@@ -65,6 +72,10 @@ export class OverMap {
 		this.addMountains();
 		console.log("adding forests");
 		this.addForests();
+		console.log("adding lakes");
+		this.addLakes();
+		console.log("adding rivers");
+		this.addRivers();
 		console.log("updateing world object");
 		this.updateWorldObject();
 		console.log("done");
@@ -114,7 +125,7 @@ export class OverMap {
 		let noise = new Noise.Noise(Math.random());
 		return (q) => {
 			let c = (noise.simplex2(q.x * SIMPLEX_MULT, q.y * SIMPLEX_MULT) + 1) / 2;
-			return c > SIMPLEX_CAP + SIMPLEX_CAP * q.length() * q.length();
+			return c > SIMPLEX_CAP + SIMPLEX_CAP * 2 * q.length() * q.length();
 		};
 	}
 
@@ -183,11 +194,11 @@ export class OverMap {
 	}
 
 	// returns array of free-space locations (x,y pairs)
-	getLand() {
+	getLand(isFree = (x,y) => this.world[x][y] == LAND) {
 		let land = [];
 		for(let x = 0; x < constants.WORLD_SIZE; x++) {
 			for(let y = 0; y < constants.WORLD_SIZE; y++) {
-				if(this.world[x][y] == LAND) {
+				if(isFree(x, y)) {
 					land.push([x, y]);
 				}
 			}
@@ -217,6 +228,57 @@ export class OverMap {
 			}
 		}
 		return false;
+	}
+
+	addLakes() {
+		let sea = this.getSea();
+		for(let x = 0; x < constants.WORLD_SIZE; x++) {
+			for(let y = 0; y < constants.WORLD_SIZE; y++) {
+				let key = x + "," + y;
+				if(this.world[x][y] == SEA && sea[key] == null) this.world[x][y] = LAKE;
+			}
+		}
+	}
+
+	addRivers() {
+		let land = this.getLand((x, y) => {
+			return this.world[x][y] != SEA && this.world[x][y] != BEACH && this.world[x][y] != LAKE &&
+				x >= constants.WORLD_SIZE * .3 && y >= constants.WORLD_SIZE * .3 &&
+				x < constants.WORLD_SIZE * .7 && y < constants.WORLD_SIZE * .7;
+		});
+		for(let i = 0; i < RIVER_COUNT; i++) {
+			let index = Math.floor(Math.random() * land.length);
+			let [x, y] = land[index];
+			this.drunkenLine(x, y,
+				new THREE.Vector2((x - constants.WORLD_SIZE/2)/constants.WORLD_SIZE/2,
+					(y - constants.WORLD_SIZE/2)/constants.WORLD_SIZE/2),
+				RIVER,
+				(x, y) => [SEA, LAKE].indexOf(this.world[Math.round(x)][Math.round(y)]) >= 0);
+		}
+	}
+
+	drunkenLine(x, y, m, blockType, stopWhen) {
+		let t = new THREE.Vector3();
+		let t2 = new THREE.Vector3(m.x, m.y, 0);
+		let np = new THREE.Vector2(x, y);
+		let mm = new THREE.Vector2(m.x, m.y);
+		while(!stopWhen(np.x, np.y)) {
+			this.world[Math.round(np.x)][Math.round(np.y)] = blockType;
+
+			if(Math.random() > 0.7) {
+				// change direction by +/- 45 deg
+				t.set(mm.x, mm.y, 0);
+				t.applyAxisAngle(Z_AXIS, Math.random() * Math.PI / 2 - Math.PI / 4);
+
+				// but not too far...
+				if(t.angleTo(t2) < Math.PI/2) {
+					mm.set(t.x, t.y);
+				}
+			}
+
+			// take a step
+			np.add(mm);
+		}
 	}
 
 	getSea() {
