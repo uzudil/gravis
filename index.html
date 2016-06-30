@@ -1,0 +1,23 @@
+<html>
+<head>
+    <title>gravis</title>
+	<link rel="stylesheet" type="text/css" href="css/gravis.css">
+</head>
+<body>
+	<div id="loading"><div id="progress"><div id="progress-value"></div></div></div>
+	<div id="alert">
+		<div id="ui_loading_models" class="alert wait-alert localized">Loading models...</div>
+		<div id="ui_loading_game" class="alert wait-alert localized">Loading game...</div>
+	</div>
+	<div id="overmap_buttons">
+        <select id="noise">
+            <option>radial</option>
+            <option>perlin</option>
+            <option>simplex</option>
+        </select>
+		<button id="accept">Accept</button>
+		<button id="reject">Reject</button>
+	</div>
+	<script src="dist/gravis.js"></script>
+</body>
+</html>
