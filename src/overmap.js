@@ -3,6 +3,7 @@ import $ from 'jquery';
 import * as constants from 'constants';
 import * as util from 'util';
 import Noise from 'noisejs';
+import { default as aStar } from 'a-star';
 
 // credit: https://github.com/amitp/mapgen2/blob/master/Map.as
 // Author: amitp@cs.stanford.edu
@@ -21,9 +22,14 @@ const MATERIAL = new THREE.MeshBasicMaterial({
 	side: THREE.DoubleSide,
 	vertexColors: THREE.FaceColors
 });
-const SIZE = 500;
+const SIZE = 600;
 const MOUNTAIN_RATIO = 0.48;
 const FOREST_RATIO = 0.55;
+const COASTAL_TOWNS = 7;
+const MIN_NODE_SPACING = constants.WORLD_SIZE / 10;
+const TOWN_SIZE = 2;
+const FOREST_TOWNS = 5;
+const DUNGEON_COUNT = 7;
 
 const SEA = 0;
 const LAND = 1;
@@ -32,6 +38,10 @@ const FOREST = 3;
 const BEACH = 4;
 const LAKE = 5;
 const RIVER = 6;
+const TOWN = 7;
+const TOWN_CENTER = 8;
+const DUNGEON = 9;
+const ROAD = 10;
 
 const COLORS = [
 	0x7080ec,
@@ -40,7 +50,11 @@ const COLORS = [
 	0x408840,
 	0xeeeecc,
 	0x7080ec,
-	0x7080ec
+	0x7080ec,
+	0x886600,
+	0xcc4400,
+	0xeeee00,
+	0x332200
 ];
 
 const Z_AXIS = new THREE.Vector3(0, 0, 1);
@@ -76,6 +90,13 @@ export class OverMap {
 		this.addLakes();
 		console.log("adding rivers");
 		this.addRivers();
+
+		let nodes = [];
+		console.log("adding towns");
+		this.addNodes(nodes);
+		console.log("adding roads");
+		this.addRoads(nodes);
+
 		console.log("updateing world object");
 		this.updateWorldObject();
 		console.log("done");
@@ -254,6 +275,148 @@ export class OverMap {
 					(y - constants.WORLD_SIZE/2)/constants.WORLD_SIZE/2),
 				RIVER,
 				(x, y) => [SEA, LAKE].indexOf(this.world[Math.round(x)][Math.round(y)]) >= 0);
+		}
+	}
+
+	addNodes(nodes) {
+		this.addNodeOnTerrain(nodes, COASTAL_TOWNS, BEACH, (x, y) => this.addTown(x, y));
+		this.addNodeOnTerrain(nodes, FOREST_TOWNS, FOREST, (x, y) => this.addTown(x, y));
+		this.addNodeOnTerrain(nodes, DUNGEON_COUNT, MOUNTAIN, (x, y) => this.world[x][y] = DUNGEON);
+	}
+
+	addNodeOnTerrain(nodes, count, blockType, addNodeFx) {
+		let isTooClose = this.isTooCloseFx();
+		let terrain = this.getLand((x, y) => this.world[x][y] == blockType);
+		for(let i = 0; i < count; i++) {
+			// try 5 times
+			for(let t = 0; t < 5; t++) {
+				let index = Math.floor(Math.random() * terrain.length);
+				let [x, y] = terrain[index];
+				if (!isTooClose(x, y, nodes)) {
+					addNodeFx(x, y);
+					terrain.splice(index, 1);
+					nodes.push([x, y]);
+					break;
+				}
+			}
+		}
+	}
+
+	addTown(x, y) {
+		for(let dx = -TOWN_SIZE; dx <= TOWN_SIZE; dx++) {
+			for(let dy = -TOWN_SIZE; dy <= TOWN_SIZE; dy++) {
+				let xx = x + dx;
+				let yy = y + dy;
+				if(this.onLand(xx, yy)) this.world[xx][yy] = TOWN;
+			}
+		}
+		this.world[x][y] = TOWN_CENTER;
+	}
+
+	isValidPos(x, y) {
+		return x >= 0 && x < constants.WORLD_SIZE && y >= 0 && y < constants.WORLD_SIZE;
+	}
+
+	onWater(x, y) {
+		return this.isValidPos(x, y) && [SEA, RIVER, LAKE].indexOf(this.world[x][y]) >= 0;
+	}
+
+	onLand(x, y) {
+		return this.isValidPos(x, y) && !this.onWater(x, y);
+	}
+
+	canBeRoad(x, y) {
+		return this.isValidPos(x, y) && [SEA, LAKE, BEACH].indexOf(this.world[x][y]) < 0;
+	}
+
+	isTooCloseFx() {
+		let a = new THREE.Vector2();
+		let b = new THREE.Vector2();
+		return (x, y, nodes) => {
+			a.set(x, y);
+			return nodes.some(([x, y]) => {
+				b.set(x, y);
+				return a.distanceTo(b) <= MIN_NODE_SPACING;
+			});
+		};
+	}
+
+	static euclideanDistance(a, b) {
+		try {
+			var dx = b[0] - a[0], dy = b[1] - a[1];
+			return Math.sqrt(dx * dx + dy * dy);
+		} catch(exc) {
+			debugger;
+		}
+	}
+
+	static rectilinearDistance(a, b) {
+		var dx = b[0] - a[0], dy = b[1] - a[1];
+		return Math.abs(dx) + Math.abs(dy);
+	}
+
+	findClosestFx() {
+		let a = new THREE.Vector2();
+		let b = new THREE.Vector2();
+
+		return (x, y, nodes) => {
+			a.set(x, y);
+			let closest = null;
+			let d = constants.WORLD_SIZE;
+			nodes.forEach((p) => {
+				if(!(x == p[0] && y == p[1])) {
+					b.set(p[0], p[1]);
+					let dd = a.distanceTo(b);
+					if (dd < d) {
+						d = dd;
+						closest = p;
+					}
+				}
+			});
+			return closest;
+		};
+	}
+
+	addRoads(nodes) {
+		let findClosest = this.findClosestFx();
+		while(nodes.length > 1) {
+			let node = nodes[0];
+			let [x, y] = node;
+			let closest = findClosest(x, y, nodes);
+			console.log("Finding path from ", node, " to ", closest);
+
+			let path = aStar({
+				start: [x, y],
+				isEnd: (node) => node[0] == closest[0] && node[1] == closest[1],
+				neighbor: (node) => {
+					let a = [];
+					let [x, y] = node;
+					if(this.canBeRoad(x - 1, y - 1)) a.push([x - 1, y - 1]);
+					if(this.canBeRoad(x, y - 1)) a.push([x, y - 1]);
+					if(this.canBeRoad(x + 1, y - 1)) a.push([x + 1, y - 1]);
+					if(this.canBeRoad(x - 1, y + 1)) a.push([x - 1, y + 1]);
+					if(this.canBeRoad(x, y + 1)) a.push([x, y + 1]);
+					if(this.canBeRoad(x + 1, y + 1)) a.push([x + 1, y + 1]);
+					if(this.canBeRoad(x + 1, y)) a.push([x + 1, y]);
+					if(this.canBeRoad(x - 1, y)) a.push([x - 1, y]);
+					return a;
+				},
+				distance: OverMap.euclideanDistance,
+				heuristic: (node) => OverMap.rectilinearDistance(node, closest),
+				hash: (node) => node[0] + "," + node[1]
+			});
+			console.log(path);
+
+			// draw road
+			if(path.status === "success") {
+				for(let n of path.path) {
+					if(!(n[0] == x && n[1] == y) && !(n[0] == closest[0] && n[1] == closest[1])) {
+						this.world[n[0]][n[1]] = ROAD;
+					}
+				}
+			}
+
+			nodes.splice(0, 1);
 		}
 	}
 

@@ -25,6 +25,7 @@
     "webpack-dev-server": "^1.14.0"
   },
   "dependencies": {
+    "a-star": "^0.2.0",
     "jquery": "^2.2.2",
     "noisejs": "^2.1.0",
     "stats.js": "0.0.14-master",
