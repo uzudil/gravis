@@ -80,24 +80,19 @@ export class OverMap {
 		this.initWorld();
 		console.log("creating world");
 		this.makeWorld();
+		console.log("adding lakes");
+		this.addLakes();
 		console.log("adding beaches");
 		this.addBeaches();
 		console.log("adding mountains");
 		this.addMountains();
 		console.log("adding forests");
 		this.addForests();
-		console.log("adding lakes");
-		this.addLakes();
 		console.log("adding rivers");
 		this.addRivers();
-
-		let nodes = [];
-		console.log("adding towns");
-		this.addNodes(nodes);
-		console.log("adding roads");
-		this.addRoads(nodes);
-
-		console.log("updateing world object");
+		console.log("adding towns and roads");
+		this.addRoads(this.addNodes());
+		console.log("updating world object");
 		this.updateWorldObject();
 		console.log("done");
 	}
@@ -278,10 +273,12 @@ export class OverMap {
 		}
 	}
 
-	addNodes(nodes) {
+	addNodes() {
+		let nodes = [];
 		this.addNodeOnTerrain(nodes, COASTAL_TOWNS, BEACH, (x, y) => this.addTown(x, y));
 		this.addNodeOnTerrain(nodes, FOREST_TOWNS, FOREST, (x, y) => this.addTown(x, y));
 		this.addNodeOnTerrain(nodes, DUNGEON_COUNT, MOUNTAIN, (x, y) => this.world[x][y] = DUNGEON);
+		return nodes;
 	}
 
 	addNodeOnTerrain(nodes, count, blockType, addNodeFx) {
@@ -383,7 +380,7 @@ export class OverMap {
 			let node = nodes[0];
 			let [x, y] = node;
 			let closest = findClosest(x, y, nodes);
-			console.log("Finding path from ", node, " to ", closest);
+			//console.log("Finding path from ", node, " to ", closest);
 
 			let path = aStar({
 				start: [x, y],
@@ -402,10 +399,11 @@ export class OverMap {
 					return a;
 				},
 				distance: OverMap.euclideanDistance,
-				heuristic: (node) => OverMap.rectilinearDistance(node, closest),
+				// add a little randomness to roads...
+				heuristic: (node) => OverMap.rectilinearDistance(node, closest) * (Math.random() >= 0.85 ? 2 : 1),
 				hash: (node) => node[0] + "," + node[1]
 			});
-			console.log(path);
+			//console.log(path);
 
 			// draw road
 			if(path.status === "success") {
@@ -416,6 +414,7 @@ export class OverMap {
 				}
 			}
 
+			// remove this node
 			nodes.splice(0, 1);
 		}
 	}

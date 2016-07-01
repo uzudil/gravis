@@ -52411,24 +52411,19 @@
 				this.initWorld();
 				console.log("creating world");
 				this.makeWorld();
+				console.log("adding lakes");
+				this.addLakes();
 				console.log("adding beaches");
 				this.addBeaches();
 				console.log("adding mountains");
 				this.addMountains();
 				console.log("adding forests");
 				this.addForests();
-				console.log("adding lakes");
-				this.addLakes();
 				console.log("adding rivers");
 				this.addRivers();
-	
-				var nodes = [];
-				console.log("adding towns");
-				this.addNodes(nodes);
-				console.log("adding roads");
-				this.addRoads(nodes);
-	
-				console.log("updateing world object");
+				console.log("adding towns and roads");
+				this.addRoads(this.addNodes());
+				console.log("updating world object");
 				this.updateWorldObject();
 				console.log("done");
 			}
@@ -52634,9 +52629,10 @@
 			}
 		}, {
 			key: 'addNodes',
-			value: function addNodes(nodes) {
+			value: function addNodes() {
 				var _this3 = this;
 	
+				var nodes = [];
 				this.addNodeOnTerrain(nodes, COASTAL_TOWNS, BEACH, function (x, y) {
 					return _this3.addTown(x, y);
 				});
@@ -52646,6 +52642,7 @@
 				this.addNodeOnTerrain(nodes, DUNGEON_COUNT, MOUNTAIN, function (x, y) {
 					return _this3.world[x][y] = DUNGEON;
 				});
+				return nodes;
 			}
 		}, {
 			key: 'addNodeOnTerrain',
@@ -52764,7 +52761,7 @@
 					var y = _node[1];
 	
 					var closest = findClosest(x, y, nodes);
-					console.log("Finding path from ", node, " to ", closest);
+					//console.log("Finding path from ", node, " to ", closest);
 	
 					var path = (0, _aStar2.default)({
 						start: [x, y],
@@ -52790,14 +52787,15 @@
 							return a;
 						},
 						distance: OverMap.euclideanDistance,
+						// add a little randomness to roads...
 						heuristic: function heuristic(node) {
-							return OverMap.rectilinearDistance(node, closest);
+							return OverMap.rectilinearDistance(node, closest) * (Math.random() >= 0.85 ? 2 : 1);
 						},
 						hash: function hash(node) {
 							return node[0] + "," + node[1];
 						}
 					});
-					console.log(path);
+					//console.log(path);
 	
 					// draw road
 					if (path.status === "success") {
@@ -52829,6 +52827,7 @@
 						}
 					}
 	
+					// remove this node
 					nodes.splice(0, 1);
 				};
 	
