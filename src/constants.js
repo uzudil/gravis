@@ -13,12 +13,10 @@ export const DIR2_COLOR = new THREE.Color(0xffe0cc);
 export const MATERIAL = new THREE.MeshLambertMaterial({
 	color: 0xffffff,
 	side: THREE.DoubleSide,
-	vertexColors: THREE.VertexColors,
-		//FaceColors,
-	//shading: THREE.SmoothShading
-	//shading: THREE.FlatShading
-	//overdraw: true
+	vertexColors: THREE.VertexColors
 });
 
-//export const WORLD_SIZE = 0xff;
-export const WORLD_SIZE = 0xff;
+export const WORLD_SIZE = 0x100;
+export const REGION_SIZE = 0x10;
+export const SECTION_SIZE = 0x10;
+export const VERTEX_SIZE = REGION_SIZE * SECTION_SIZE;

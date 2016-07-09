@@ -80,5 +80,12 @@ body {
 }
 
 #overmap_buttons {
+    display: none;
     position: fixed;
+}
+
+#region_buttons {
+    display: none;
+    position: fixed;
+    color: white;
 }

@@ -4,6 +4,7 @@ import * as constants from 'constants';
 import * as util from 'util';
 import Noise from 'noisejs';
 import { default as aStar } from 'a-star';
+import * as regionModel from 'region';
 
 // credit: https://github.com/amitp/mapgen2/blob/master/Map.as
 // Author: amitp@cs.stanford.edu
@@ -22,7 +23,7 @@ const MATERIAL = new THREE.MeshBasicMaterial({
 	side: THREE.DoubleSide,
 	vertexColors: THREE.FaceColors
 });
-const SIZE = 600;
+const SIZE = 300;
 const MOUNTAIN_RATIO = 0.48;
 const FOREST_RATIO = 0.55;
 const COASTAL_TOWNS = 7;
@@ -71,7 +72,9 @@ export class OverMap {
 		console.log("creating world model");
 		this.makeWorldObject();
 		this.gravis.scene.add(this.map);
+	}
 
+	edit() {
 		this.newMap();
 	}
 
@@ -506,5 +509,29 @@ export class OverMap {
 			face.color.setHex(COLORS[value]);
 		}
 		this.map.geometry.colorsNeedUpdate = true;
+	}
+
+	hide() {
+		this.map.visible = false;
+	}
+
+	saveRegions() {
+		for(let x = 0; x < constants.WORLD_SIZE; x += constants.REGION_SIZE) {
+			for (let y = 0; y < constants.WORLD_SIZE; y += constants.REGION_SIZE) {
+				let rx = Math.floor(x/constants.REGION_SIZE);
+				let ry = Math.floor(y/constants.REGION_SIZE);
+
+				let region = [];
+				for(let xx = 0; xx < constants.REGION_SIZE; xx++) {
+					let a = [];
+					region.push(a);
+					for(let yy = 0; yy < constants.REGION_SIZE; yy++) {
+						a.push(this.world[x + xx][y + yy]);
+					}
+				}
+
+				new regionModel.Region(rx, ry, region).save();
+			}
+		}
 	}
 }

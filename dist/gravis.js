@@ -76,9 +76,13 @@
 	
 	var controller = _interopRequireWildcard(_controller);
 	
-	var _overmap = __webpack_require__(8);
+	var _overmap = __webpack_require__(9);
 	
 	var overmap = _interopRequireWildcard(_overmap);
+	
+	var _regioneditor = __webpack_require__(22);
+	
+	var regioneditor = _interopRequireWildcard(_regioneditor);
 	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
@@ -108,9 +112,9 @@
 				this.width = this.height * constants.ASPECT_RATIO;
 	
 				window.models = this.models = models;
-				this.camera = new _three2.default.PerspectiveCamera(65, constants.ASPECT_RATIO, 1, constants.FAR_DIST);
-				//let orthoDiv = this.width / (8 * constants.SECTION);
-				//this.camera = new THREE.OrthographicCamera( this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, 1000 );
+				//this.camera = new THREE.PerspectiveCamera( 45, constants.ASPECT_RATIO, 1, constants.FAR_DIST );
+				var orthoDiv = this.width / (1 * constants.REGION_SIZE * constants.SECTION_SIZE);
+				this.camera = new _three2.default.OrthographicCamera(this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, constants.FAR_DIST);
 	
 				this.scene = new _three2.default.Scene();
 	
@@ -155,27 +159,25 @@
 				//this.scene.fog = new THREE.Fog(0, 1, 1000);
 	
 				// lights
-				//this.ambientLight = new THREE.AmbientLight( constants.AMBIENT_COLOR.getHex() );
-				//this.ambientLight.intensity = .1;
-				//this.scene.add(this.ambientLight);
-				//
-				//this.dirLight1 = new THREE.DirectionalLight( constants.DIR1_COLOR.getHex(), 0.9 );
-				//this.dirLight1.position.set( 1, 1, 1 );
-				//this.scene.add( this.dirLight1 );
-				//
-				//this.dirLight2 = new THREE.DirectionalLight( constants.DIR2_COLOR.getHex(), 0.3 );
-				//this.dirLight2.position.set(1, -1, .8 );
-				//this.scene.add( this.dirLight2 );
+				this.ambientLight = new _three2.default.AmbientLight(constants.AMBIENT_COLOR.getHex());
+				this.ambientLight.intensity = .1;
+				this.scene.add(this.ambientLight);
+	
+				this.dirLight1 = new _three2.default.DirectionalLight(constants.DIR1_COLOR.getHex(), 0.9);
+				this.dirLight1.position.set(1, 1, 1);
+				this.scene.add(this.dirLight1);
+	
+				this.dirLight2 = new _three2.default.DirectionalLight(constants.DIR2_COLOR.getHex(), 0.3);
+				this.dirLight2.position.set(1, -1, .8);
+				this.scene.add(this.dirLight2);
 	
 				this.controller = new controller.Controller(this);
 				this.overmap = new overmap.OverMap(this);
+				this.regionEditor = new regioneditor.RegionEditor(this);
+	
+				this.controller.start();
 	
 				console.log("started");
-			}
-		}, {
-			key: 'createMap',
-			value: function createMap() {
-				// chop up the overmap into regions
 			}
 		}, {
 			key: 'animate',
@@ -190,7 +192,6 @@
 				this.prevTime = time;
 	
 				this.controller.update(delta);
-	
 				this.renderer.render(this.scene, this.camera);
 	
 				if (constants.DEV_MODE) {
@@ -51564,7 +51565,7 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
-	exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
+	exports.VERTEX_SIZE = exports.SECTION_SIZE = exports.REGION_SIZE = exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
 	
 	var _three = __webpack_require__(1);
 	
@@ -51588,8 +51589,10 @@
 		vertexColors: _three2.default.VertexColors
 	});
 	
-	//export const WORLD_SIZE = 0xff;
-	var WORLD_SIZE = exports.WORLD_SIZE = 0xff;
+	var WORLD_SIZE = exports.WORLD_SIZE = 0x100;
+	var REGION_SIZE = exports.REGION_SIZE = 0x10;
+	var SECTION_SIZE = exports.SECTION_SIZE = 0x10;
+	var VERTEX_SIZE = exports.VERTEX_SIZE = REGION_SIZE * SECTION_SIZE;
 
 /***/ },
 /* 4 */
@@ -52237,6 +52240,10 @@
 	
 	var _jquery2 = _interopRequireDefault(_jquery);
 	
+	var _jqueryMousewheel = __webpack_require__(8);
+	
+	var $$ = _interopRequireWildcard(_jqueryMousewheel);
+	
 	var _constants = __webpack_require__(3);
 	
 	var constants = _interopRequireWildcard(_constants);
@@ -52244,6 +52251,10 @@
 	var _util = __webpack_require__(5);
 	
 	var util = _interopRequireWildcard(_util);
+	
+	var _region = __webpack_require__(21);
+	
+	var regionModel = _interopRequireWildcard(_region);
 	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
@@ -52258,6 +52269,8 @@
 			_classCallCheck(this, Controller);
 	
 			this.gravis = gravis;
+			this.fw = this.bw = this.left = this.right = false;
+			this.direction = new _three2.default.Vector3(0, 0, 0);
 	
 			(0, _jquery2.default)("#reject").click(function (event) {
 				_this.gravis.overmap.newMap();
@@ -52265,7 +52278,13 @@
 				return true;
 			});
 			(0, _jquery2.default)("#accept").click(function (event) {
-				_this.gravis.createMap();
+				_this.gravis.overmap.saveRegions();
+				_this.load();
+				event.stopPropagation();
+				return true;
+			});
+			(0, _jquery2.default)("#load").click(function (event) {
+				_this.load();
 				event.stopPropagation();
 				return true;
 			});
@@ -52274,26 +52293,93 @@
 				event.stopPropagation();
 				return true;
 			});
-	
-			//this.pitch = new THREE.Object3D();
-			//this.pitch.position.z = 100;
-			//this.pitch.position.y = -12 * constants.SECTION;
-			//this.pitch.rotation.x = Math.PI / 4;
-			//this.pitch.add(this.gravis.camera);
-			//
-			//this.roll = new THREE.Object3D();
-			//this.roll.add(this.pitch);
-			//
-			//// yaw
-			//this.player = new THREE.Object3D();
-			//this.player.add(this.roll);
-			//this.player.rotation.z = Math.PI / 4;
-			//this.gravis.scene.add(this.player);
+			(0, _jquery2.default)("canvas").mousewheel(function (event) {
+				//console.log(event.deltaX, event.deltaY, event.deltaFactor);
+				var s = void 0;
+				if (event.deltaY > 0) s = _this.gravis.regionEditor.obj.scale.x * 1.25;else s = _this.gravis.regionEditor.obj.scale.x / 1.25;
+				if (s < constants.EDITOR_SCALE) s = constants.EDITOR_SCALE;
+				if (s > constants.EDITOR_SCALE * 10) s = constants.EDITOR_SCALE * 10;
+				_this.gravis.regionEditor.obj.scale.set(s, s, s);
+			});
+			(0, _jquery2.default)("canvas").mousemove(function (event) {
+				var mx = event.originalEvent.movementX;
+				var my = event.originalEvent.movementY;
+				_this.gravis.regionEditor.obj.rotation.z += mx * 0.01;
+			});
+			(0, _jquery2.default)(document).keydown(function (event) {
+				switch (event.keyCode) {
+					case 87:
+						_this.fw = true;break;
+					case 83:
+						_this.bw = true;break;
+					case 65:
+						_this.left = true;break;
+					case 68:
+						_this.right = true;break;
+				}
+			});
+			(0, _jquery2.default)(document).keyup(function (event) {
+				switch (event.keyCode) {
+					case 87:
+						_this.fw = false;break;
+					case 83:
+						_this.bw = false;break;
+					case 65:
+						_this.left = false;break;
+					case 68:
+						_this.right = false;break;
+				}
+			});
 		}
 	
 		_createClass(Controller, [{
+			key: 'start',
+			value: function start() {
+				var _this2 = this;
+	
+				// if a region exists, edit it, otherwise show the overmap
+				regionModel.Region.load(0, 0, function (region) {
+					return _this2.load();
+				}, function () {
+					return _this2.overmap();
+				});
+			}
+		}, {
+			key: 'overmap',
+			value: function overmap() {
+				this.gravis.overmap.show();
+				this.gravis.overmap.edit();
+				(0, _jquery2.default)("#overmap_buttons").show();
+				(0, _jquery2.default)("#region_buttons").hide();
+			}
+		}, {
+			key: 'load',
+			value: function load() {
+				this.gravis.overmap.hide();
+				var rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+				var ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+				this.gravis.regionEditor.edit(rx, ry);
+				(0, _jquery2.default)("#overmap_buttons").hide();
+				(0, _jquery2.default)("#region_buttons").show();
+			}
+		}, {
 			key: 'update',
-			value: function update(delta) {}
+			value: function update(delta) {
+				if (this.fw) {
+					this.direction.set(0, 1, 0);
+				} else if (this.bw) {
+					this.direction.set(0, -1, 0);
+				} else if (this.right) {
+					this.direction.set(1, 0, 0);
+				} else if (this.left) {
+					this.direction.set(-1, 0, 0);
+				}
+	
+				if (this.fw || this.bw || this.left || this.right) {
+					var speed = 100 * delta;
+					this.gravis.regionEditor.obj.translateOnAxis(this.direction, speed);
+				}
+			}
 		}]);
 
 		return Controller;
@@ -52301,6 +52387,233 @@
 
 /***/ },
 /* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*!
+	 * jQuery Mousewheel 3.1.13
+	 *
+	 * Copyright jQuery Foundation and other contributors
+	 * Released under the MIT license
+	 * http://jquery.org/license
+	 */
+	
+	(function (factory) {
+	    if ( true ) {
+	        // AMD. Register as an anonymous module.
+	        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(2)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory), __WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ? (__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__), __WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+	    } else if (typeof exports === 'object') {
+	        // Node/CommonJS style for Browserify
+	        module.exports = factory;
+	    } else {
+	        // Browser globals
+	        factory(jQuery);
+	    }
+	}(function ($) {
+	
+	    var toFix  = ['wheel', 'mousewheel', 'DOMMouseScroll', 'MozMousePixelScroll'],
+	        toBind = ( 'onwheel' in document || document.documentMode >= 9 ) ?
+	                    ['wheel'] : ['mousewheel', 'DomMouseScroll', 'MozMousePixelScroll'],
+	        slice  = Array.prototype.slice,
+	        nullLowestDeltaTimeout, lowestDelta;
+	
+	    if ( $.event.fixHooks ) {
+	        for ( var i = toFix.length; i; ) {
+	            $.event.fixHooks[ toFix[--i] ] = $.event.mouseHooks;
+	        }
+	    }
+	
+	    var special = $.event.special.mousewheel = {
+	        version: '3.1.12',
+	
+	        setup: function() {
+	            if ( this.addEventListener ) {
+	                for ( var i = toBind.length; i; ) {
+	                    this.addEventListener( toBind[--i], handler, false );
+	                }
+	            } else {
+	                this.onmousewheel = handler;
+	            }
+	            // Store the line height and page height for this particular element
+	            $.data(this, 'mousewheel-line-height', special.getLineHeight(this));
+	            $.data(this, 'mousewheel-page-height', special.getPageHeight(this));
+	        },
+	
+	        teardown: function() {
+	            if ( this.removeEventListener ) {
+	                for ( var i = toBind.length; i; ) {
+	                    this.removeEventListener( toBind[--i], handler, false );
+	                }
+	            } else {
+	                this.onmousewheel = null;
+	            }
+	            // Clean up the data we added to the element
+	            $.removeData(this, 'mousewheel-line-height');
+	            $.removeData(this, 'mousewheel-page-height');
+	        },
+	
+	        getLineHeight: function(elem) {
+	            var $elem = $(elem),
+	                $parent = $elem['offsetParent' in $.fn ? 'offsetParent' : 'parent']();
+	            if (!$parent.length) {
+	                $parent = $('body');
+	            }
+	            return parseInt($parent.css('fontSize'), 10) || parseInt($elem.css('fontSize'), 10) || 16;
+	        },
+	
+	        getPageHeight: function(elem) {
+	            return $(elem).height();
+	        },
+	
+	        settings: {
+	            adjustOldDeltas: true, // see shouldAdjustOldDeltas() below
+	            normalizeOffset: true  // calls getBoundingClientRect for each event
+	        }
+	    };
+	
+	    $.fn.extend({
+	        mousewheel: function(fn) {
+	            return fn ? this.bind('mousewheel', fn) : this.trigger('mousewheel');
+	        },
+	
+	        unmousewheel: function(fn) {
+	            return this.unbind('mousewheel', fn);
+	        }
+	    });
+	
+	
+	    function handler(event) {
+	        var orgEvent   = event || window.event,
+	            args       = slice.call(arguments, 1),
+	            delta      = 0,
+	            deltaX     = 0,
+	            deltaY     = 0,
+	            absDelta   = 0,
+	            offsetX    = 0,
+	            offsetY    = 0;
+	        event = $.event.fix(orgEvent);
+	        event.type = 'mousewheel';
+	
+	        // Old school scrollwheel delta
+	        if ( 'detail'      in orgEvent ) { deltaY = orgEvent.detail * -1;      }
+	        if ( 'wheelDelta'  in orgEvent ) { deltaY = orgEvent.wheelDelta;       }
+	        if ( 'wheelDeltaY' in orgEvent ) { deltaY = orgEvent.wheelDeltaY;      }
+	        if ( 'wheelDeltaX' in orgEvent ) { deltaX = orgEvent.wheelDeltaX * -1; }
+	
+	        // Firefox < 17 horizontal scrolling related to DOMMouseScroll event
+	        if ( 'axis' in orgEvent && orgEvent.axis === orgEvent.HORIZONTAL_AXIS ) {
+	            deltaX = deltaY * -1;
+	            deltaY = 0;
+	        }
+	
+	        // Set delta to be deltaY or deltaX if deltaY is 0 for backwards compatabilitiy
+	        delta = deltaY === 0 ? deltaX : deltaY;
+	
+	        // New school wheel delta (wheel event)
+	        if ( 'deltaY' in orgEvent ) {
+	            deltaY = orgEvent.deltaY * -1;
+	            delta  = deltaY;
+	        }
+	        if ( 'deltaX' in orgEvent ) {
+	            deltaX = orgEvent.deltaX;
+	            if ( deltaY === 0 ) { delta  = deltaX * -1; }
+	        }
+	
+	        // No change actually happened, no reason to go any further
+	        if ( deltaY === 0 && deltaX === 0 ) { return; }
+	
+	        // Need to convert lines and pages to pixels if we aren't already in pixels
+	        // There are three delta modes:
+	        //   * deltaMode 0 is by pixels, nothing to do
+	        //   * deltaMode 1 is by lines
+	        //   * deltaMode 2 is by pages
+	        if ( orgEvent.deltaMode === 1 ) {
+	            var lineHeight = $.data(this, 'mousewheel-line-height');
+	            delta  *= lineHeight;
+	            deltaY *= lineHeight;
+	            deltaX *= lineHeight;
+	        } else if ( orgEvent.deltaMode === 2 ) {
+	            var pageHeight = $.data(this, 'mousewheel-page-height');
+	            delta  *= pageHeight;
+	            deltaY *= pageHeight;
+	            deltaX *= pageHeight;
+	        }
+	
+	        // Store lowest absolute delta to normalize the delta values
+	        absDelta = Math.max( Math.abs(deltaY), Math.abs(deltaX) );
+	
+	        if ( !lowestDelta || absDelta < lowestDelta ) {
+	            lowestDelta = absDelta;
+	
+	            // Adjust older deltas if necessary
+	            if ( shouldAdjustOldDeltas(orgEvent, absDelta) ) {
+	                lowestDelta /= 40;
+	            }
+	        }
+	
+	        // Adjust older deltas if necessary
+	        if ( shouldAdjustOldDeltas(orgEvent, absDelta) ) {
+	            // Divide all the things by 40!
+	            delta  /= 40;
+	            deltaX /= 40;
+	            deltaY /= 40;
+	        }
+	
+	        // Get a whole, normalized value for the deltas
+	        delta  = Math[ delta  >= 1 ? 'floor' : 'ceil' ](delta  / lowestDelta);
+	        deltaX = Math[ deltaX >= 1 ? 'floor' : 'ceil' ](deltaX / lowestDelta);
+	        deltaY = Math[ deltaY >= 1 ? 'floor' : 'ceil' ](deltaY / lowestDelta);
+	
+	        // Normalise offsetX and offsetY properties
+	        if ( special.settings.normalizeOffset && this.getBoundingClientRect ) {
+	            var boundingRect = this.getBoundingClientRect();
+	            offsetX = event.clientX - boundingRect.left;
+	            offsetY = event.clientY - boundingRect.top;
+	        }
+	
+	        // Add information to the event object
+	        event.deltaX = deltaX;
+	        event.deltaY = deltaY;
+	        event.deltaFactor = lowestDelta;
+	        event.offsetX = offsetX;
+	        event.offsetY = offsetY;
+	        // Go ahead and set deltaMode to 0 since we converted to pixels
+	        // Although this is a little odd since we overwrite the deltaX/Y
+	        // properties with normalized deltas.
+	        event.deltaMode = 0;
+	
+	        // Add event and delta to the front of the arguments
+	        args.unshift(event, delta, deltaX, deltaY);
+	
+	        // Clearout lowestDelta after sometime to better
+	        // handle multiple device types that give different
+	        // a different lowestDelta
+	        // Ex: trackpad = 3 and mouse wheel = 120
+	        if (nullLowestDeltaTimeout) { clearTimeout(nullLowestDeltaTimeout); }
+	        nullLowestDeltaTimeout = setTimeout(nullLowestDelta, 200);
+	
+	        return ($.event.dispatch || $.event.handle).apply(this, args);
+	    }
+	
+	    function nullLowestDelta() {
+	        lowestDelta = null;
+	    }
+	
+	    function shouldAdjustOldDeltas(orgEvent, absDelta) {
+	        // If this is an older event and the delta is divisable by 120,
+	        // then we are assuming that the browser is treating this as an
+	        // older mouse wheel event and that we should divide the deltas
+	        // by 40 to try and get a more usable deltaFactor.
+	        // Side note, this actually impacts the reported scroll distance
+	        // in older browsers and can cause scrolling to be slower than native.
+	        // Turn this off by setting $.event.special.mousewheel.settings.adjustOldDeltas to false.
+	        return special.settings.adjustOldDeltas && orgEvent.type === 'mousewheel' && absDelta % 120 === 0;
+	    }
+	
+	}));
+
+
+/***/ },
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -52330,13 +52643,17 @@
 	
 	var util = _interopRequireWildcard(_util);
 	
-	var _noisejs = __webpack_require__(9);
+	var _noisejs = __webpack_require__(10);
 	
 	var _noisejs2 = _interopRequireDefault(_noisejs);
 	
-	var _aStar = __webpack_require__(10);
+	var _aStar = __webpack_require__(11);
 	
 	var _aStar2 = _interopRequireDefault(_aStar);
+	
+	var _region = __webpack_require__(21);
+	
+	var regionModel = _interopRequireWildcard(_region);
 	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
@@ -52361,7 +52678,7 @@
 		side: _three2.default.DoubleSide,
 		vertexColors: _three2.default.FaceColors
 	});
-	var SIZE = 600;
+	var SIZE = 300;
 	var MOUNTAIN_RATIO = 0.48;
 	var FOREST_RATIO = 0.55;
 	var COASTAL_TOWNS = 7;
@@ -52400,11 +52717,14 @@
 			console.log("creating world model");
 			this.makeWorldObject();
 			this.gravis.scene.add(this.map);
-	
-			this.newMap();
 		}
 	
 		_createClass(OverMap, [{
+			key: 'edit',
+			value: function edit() {
+				this.newMap();
+			}
+		}, {
 			key: 'newMap',
 			value: function newMap() {
 				console.log("initializing world");
@@ -52971,6 +53291,32 @@
 	
 				this.map.geometry.colorsNeedUpdate = true;
 			}
+		}, {
+			key: 'hide',
+			value: function hide() {
+				this.map.visible = false;
+			}
+		}, {
+			key: 'saveRegions',
+			value: function saveRegions() {
+				for (var _x7 = 0; _x7 < constants.WORLD_SIZE; _x7 += constants.REGION_SIZE) {
+					for (var _y4 = 0; _y4 < constants.WORLD_SIZE; _y4 += constants.REGION_SIZE) {
+						var rx = Math.floor(_x7 / constants.REGION_SIZE);
+						var ry = Math.floor(_y4 / constants.REGION_SIZE);
+	
+						var region = [];
+						for (var xx = 0; xx < constants.REGION_SIZE; xx++) {
+							var a = [];
+							region.push(a);
+							for (var yy = 0; yy < constants.REGION_SIZE; yy++) {
+								a.push(this.world[_x7 + xx][_y4 + yy]);
+							}
+						}
+	
+						new regionModel.Region(rx, ry, region).save();
+					}
+				}
+			}
 		}], [{
 			key: 'randomMinMax',
 			value: function randomMinMax(a, b) {
@@ -53000,7 +53346,7 @@
 	}();
 
 /***/ },
-/* 9 */
+/* 10 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -53333,13 +53679,13 @@
 
 
 /***/ },
-/* 10 */
+/* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assert = __webpack_require__(11)
-	  , StringSet = __webpack_require__(16)
-	  , Heap = __webpack_require__(17)
-	  , dict = __webpack_require__(19)
+	var assert = __webpack_require__(12)
+	  , StringSet = __webpack_require__(17)
+	  , Heap = __webpack_require__(18)
+	  , dict = __webpack_require__(20)
 	
 	module.exports = aStar;
 	
@@ -53454,7 +53800,7 @@
 
 
 /***/ },
-/* 11 */
+/* 12 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
@@ -53525,7 +53871,7 @@
 	// ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 	// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	
-	var util = __webpack_require__(12);
+	var util = __webpack_require__(13);
 	var hasOwn = Object.prototype.hasOwnProperty;
 	var pSlice = Array.prototype.slice;
 	var functionsHaveNames = (function () {
@@ -53951,7 +54297,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 12 */
+/* 13 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -54479,7 +54825,7 @@
 	}
 	exports.isPrimitive = isPrimitive;
 	
-	exports.isBuffer = __webpack_require__(14);
+	exports.isBuffer = __webpack_require__(15);
 	
 	function objectToString(o) {
 	  return Object.prototype.toString.call(o);
@@ -54523,7 +54869,7 @@
 	 *     prototype.
 	 * @param {function} superCtor Constructor function to inherit prototype from.
 	 */
-	exports.inherits = __webpack_require__(15);
+	exports.inherits = __webpack_require__(16);
 	
 	exports._extend = function(origin, add) {
 	  // Don't do anything if add isn't an object
@@ -54541,10 +54887,10 @@
 	  return Object.prototype.hasOwnProperty.call(obj, prop);
 	}
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(13)))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(14)))
 
 /***/ },
-/* 13 */
+/* 14 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -54669,7 +55015,7 @@
 
 
 /***/ },
-/* 14 */
+/* 15 */
 /***/ function(module, exports) {
 
 	module.exports = function isBuffer(arg) {
@@ -54680,7 +55026,7 @@
 	}
 
 /***/ },
-/* 15 */
+/* 16 */
 /***/ function(module, exports) {
 
 	if (typeof Object.create === 'function') {
@@ -54709,7 +55055,7 @@
 
 
 /***/ },
-/* 16 */
+/* 17 */
 /***/ function(module, exports) {
 
 	module.exports = Set;
@@ -54782,14 +55128,14 @@
 
 
 /***/ },
-/* 17 */
+/* 18 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(18);
+	module.exports = __webpack_require__(19);
 
 
 /***/ },
-/* 18 */
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// Generated by CoffeeScript 1.8.0
@@ -55170,7 +55516,7 @@
 
 
 /***/ },
-/* 19 */
+/* 20 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -55275,6 +55621,436 @@
 	    return dict;
 	};
 
+
+/***/ },
+/* 21 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.Region = undefined;
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var HIGH_TOP = 10;
+	var BLOCK_PROPS = [{ h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, // sea
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // land
+	//{ h: HIGH_TOP, r: 1, d: 0.1, e: 4, a: 0.7 }, // hill - doesn't exist
+	{ h: 16, r: 2, d: 0.05, e: 8, a: 0.7 }, // mountain
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // forest
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // beach
+	{ h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, // LAKE
+	{ h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, // RIVER
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // TOWN
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // TOWN_CENTER
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // DUNGEON
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 } // ROAD
+	];
+	
+	var Region = exports.Region = function () {
+		function Region(rx, ry, region) {
+			_classCallCheck(this, Region);
+	
+			this.rx = rx;
+			this.ry = ry;
+			this.region = region;
+			this.name = "region" + this.rx.toString(16) + this.ry.toString(16);
+	
+			this.z = [];
+		}
+	
+		_createClass(Region, [{
+			key: 'save',
+			value: function save() {
+				var region = {
+					region: this.region,
+					version: 1,
+					name: this.name,
+					x: this.rx,
+					y: this.ry
+				};
+	
+				console.log("Uploading " + this.name + "...");
+				_jquery2.default.ajax({
+					type: 'POST',
+					url: "http://localhost:9090/cgi-bin/upload.py",
+					data: "name=" + this.name + "&file=" + JSON.stringify(region),
+					success: function success() {
+						console.log("Success!");
+					},
+					error: function error(_error) {
+						console.log("error: ", _error);
+					},
+					dataType: "text/json"
+				});
+				console.log("Stored on server.");
+			}
+		}, {
+			key: 'display',
+			value: function display(setZ) {
+				// init height map
+				for (var x = 0; x < constants.REGION_SIZE * constants.REGION_SIZE; x++) {
+					var a = [];
+					this.z.push(a);
+					for (var y = 0; y < constants.REGION_SIZE * constants.REGION_SIZE; y++) {
+						a.push(0);
+					}
+				}
+	
+				// create height map
+				for (var _x = 0; _x < constants.REGION_SIZE; _x++) {
+					for (var _y = 0; _y < constants.REGION_SIZE; _y++) {
+						this.makeSection(_x, _y, this.region[_x][_y]);
+					}
+				}
+	
+				// apply erosion
+				for (var i = 0; i < 5; i++) {
+					this.erode();
+				}
+	
+				// move mesh points as in height map
+				for (var _x2 = 0; _x2 < constants.VERTEX_SIZE; _x2++) {
+					for (var _y2 = 0; _y2 < constants.VERTEX_SIZE; _y2++) {
+						setZ(_x2, _y2, this.z[_x2][_y2] || 0);
+					}
+				}
+			}
+		}, {
+			key: 'makeSection',
+			value: function makeSection(x, y, sectionType) {
+				var p = BLOCK_PROPS[sectionType];
+	
+				for (var xx = 0; xx < constants.SECTION_SIZE; xx++) {
+					for (var yy = 0; yy < constants.SECTION_SIZE; yy++) {
+						var z = void 0;
+						if (p.e <= 1 || xx % p.e == 0 && yy % p.e == 0) {
+							z = Math.random() * p.r - p.r * p.d + p.h;
+						} else {
+							var tx = Math.floor(xx / p.e) * p.e;
+							var ty = Math.floor(yy / p.e) * p.e;
+							z = this.z[x * constants.SECTION_SIZE + tx][y * constants.SECTION_SIZE + ty];
+						}
+						this.z[x * constants.SECTION_SIZE + xx][y * constants.SECTION_SIZE + yy] = z;
+					}
+				}
+			}
+		}, {
+			key: 'erode',
+			value: function erode() {
+				for (var x = 1; x < constants.REGION_SIZE * constants.SECTION_SIZE - 1; x++) {
+					for (var y = 1; y < constants.REGION_SIZE * constants.SECTION_SIZE - 1; y++) {
+						this.erodeAt(x, y);
+					}
+				}
+			}
+		}, {
+			key: 'erodeAt',
+			value: function erodeAt(x, y) {
+				if (x < 1 || y < 1 || x >= constants.REGION_SIZE * constants.SECTION_SIZE - 1 || y >= constants.REGION_SIZE * constants.SECTION_SIZE - 1) return;
+	
+				var a = [];
+				for (var dx = -1; dx <= 1; dx++) {
+					for (var dy = -1; dy <= 1; dy++) {
+						a.push(this.z[x + dx][y + dy]);
+					}
+				}
+				var h = a.reduce(function (p, v) {
+					return p + v;
+				}, 0) / a.length;
+				var r = h / 6;
+				this.z[x][y] = h + Math.random() * r - r / 2;
+			}
+	
+			//update(delta) {
+			//	//console.log(delta);
+			//	if(delta < 1) {
+			//		this.water.position.z += delta * this.waterDir * WATER_SPEED;
+			//		if (Math.abs(this.water.position.z - WATER_Z) > 0.2) {
+			//			this.waterDir *= -1;
+			//		}
+			//	}
+			//}
+	
+		}], [{
+			key: 'load',
+			value: function load(rx, ry, onSuccess) {
+				var onError = arguments.length <= 3 || arguments[3] === undefined ? null : arguments[3];
+	
+				console.log("Loading region " + rx + "," + ry);
+				var name = "/models/regions/region" + rx.toString(16) + ry.toString(16) + ".json?cb=" + window.cb;
+				_jquery2.default.ajax({
+					type: 'GET',
+					dataType: 'json',
+					url: name + "?cb=" + window.cb,
+					success: function success(region) {
+						console.log("Loaded region:", region);
+						return onSuccess(new Region(rx, ry, region.region));
+					},
+					error: function error(err) {
+						console.log("Error downloading region: " + name + " error=" + err);
+						if (onError) onError();
+					}
+				});
+			}
+		}]);
+
+		return Region;
+	}();
+
+/***/ },
+/* 22 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.RegionEditor = undefined;
+	
+	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	var _region = __webpack_require__(21);
+	
+	var regionModel = _interopRequireWildcard(_region);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var WATER_Z = 1.5;
+	var WATER_SPEED = 0.3;
+	var HIGH_TOP = 10;
+	var LOW_COLOR = new _three2.default.Color(0.25, 0.5, 0.2);
+	var HIGH_COLOR = new _three2.default.Color(0.55, 0.45, 0.25);
+	var SNOW_COLOR = new _three2.default.Color(0.6, 0.6, .85);
+	var WATER_COLOR = new _three2.default.Color(0.1, 0.3, 0.85);
+	var UNDERWATER_COLOR = new _three2.default.Color(0.1, 0.2, 0.35);
+	
+	var FLAT_SHADING = false;
+	
+	var RegionEditor = exports.RegionEditor = function () {
+		function RegionEditor(gravis) {
+			_classCallCheck(this, RegionEditor);
+	
+			this.gravis = gravis;
+			this.region = null;
+	
+			this.obj = new _three2.default.Object3D();
+			this.obj.rotation.set(-Math.PI / 4, 0, Math.PI / 4);
+			this.obj.position.z = -500;
+			//this.obj.scale.set(constants.EDITOR_SCALE, constants.EDITOR_SCALE, constants.EDITOR_SCALE);
+			this.gravis.scene.add(this.obj);
+	
+			// create the mesh with a buffer zone around it where we'll load 1 section of the neighboring region
+			var size = constants.VERTEX_SIZE + 2 * constants.SECTION_SIZE;
+			this.mesh = new _three2.default.Mesh(new _three2.default.PlaneGeometry(size, size, size, size), constants.MATERIAL);
+	
+			// create the vertex colors
+			this.mesh.geometry.faces.forEach(function (face) {
+				var numberOfSides = face instanceof _three2.default.Face3 ? 3 : 4;
+				for (var j = 0; j < numberOfSides; j++) {
+					face.vertexColors[j] = new _three2.default.Color(1, 1, 1);
+				}
+			});
+	
+			// index the vertices
+			this.mesh["vertexGrid"] = {};
+			var minx = 1,
+			    maxx = -1;
+			var _iteratorNormalCompletion = true;
+			var _didIteratorError = false;
+			var _iteratorError = undefined;
+	
+			try {
+				for (var _iterator = this.mesh.geometry.vertices[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+					var v = _step.value;
+	
+					// map -1 to 0, 1 to constants.VERTEX_SIZE
+					var xp = v.x + constants.VERTEX_SIZE / 2;
+					var yp = v.y + constants.VERTEX_SIZE / 2;
+					if (xp < minx) minx = xp;
+					if (xp > maxx) maxx = xp;
+					this.mesh.vertexGrid[xp + "," + yp] = v;
+				}
+			} catch (err) {
+				_didIteratorError = true;
+				_iteratorError = err;
+			} finally {
+				try {
+					if (!_iteratorNormalCompletion && _iterator.return) {
+						_iterator.return();
+					}
+				} finally {
+					if (_didIteratorError) {
+						throw _iteratorError;
+					}
+				}
+			}
+	
+			console.log("range is: " + minx + " to " + maxx);
+	
+			this.water = new _three2.default.Mesh(new _three2.default.PlaneGeometry(size, size), new _three2.default.MeshBasicMaterial({ color: WATER_COLOR, opacity: 0.25, transparent: true }));
+			this.water.position.z = WATER_Z;
+			//this.waterDir = 1;
+	
+			this.obj.add(this.mesh);
+			this.obj.add(this.water);
+		}
+	
+		_createClass(RegionEditor, [{
+			key: 'edit',
+			value: function edit(rx, ry) {
+				(0, _jquery2.default)("#rx").text(rx);
+				(0, _jquery2.default)("#ry").text(ry);
+				var regionCount = constants.WORLD_SIZE / constants.REGION_SIZE;
+				var toLoad = [];
+				for (var dx = -1; dx <= 1; dx++) {
+					for (var dy = -1; dy <= 1; dy++) {
+						if (rx + dx >= 0 && ry + dy >= 0 && rx + dx < regionCount && ry + dy < regionCount) toLoad.push([dx, dy]);
+					}
+				}
+				this.startTime = Date.now();
+				console.log("Building map...");
+				this.loadRegion(toLoad, 0, rx, ry);
+			}
+		}, {
+			key: 'loadRegion',
+			value: function loadRegion(toLoad, index, rx, ry) {
+				var _this = this;
+	
+				if (index < toLoad.length) {
+					(function () {
+						var _toLoad$index = _slicedToArray(toLoad[index], 2);
+	
+						var dx = _toLoad$index[0];
+						var dy = _toLoad$index[1];
+	
+						regionModel.Region.load(rx + dx, ry + dy, function (region) {
+							if (dx == 0 && dy == 0) _this.region = region;
+							region.display(function (sectionX, sectionY, height) {
+								var vx = constants.VERTEX_SIZE * dx + sectionX;
+								var vy = constants.VERTEX_SIZE * dy + sectionY;
+								var v = _this.mesh.vertexGrid[vx + "," + vy];
+								if (v) v.z = height;
+							});
+							_this.loadRegion(toLoad, index + 1, rx, ry);
+						});
+					})();
+				} else {
+					console.log("Done building map: " + (Date.now() - this.startTime) + " millis. Coloring...");
+					this.startTime = Date.now();
+					this.colorFaces();
+					console.log("Done coloring: " + (Date.now() - this.startTime) + " millis.");
+					this.mesh.geometry.computeVertexNormals();
+					util.updateColors(this.mesh);
+				}
+			}
+		}, {
+			key: 'colorFaces',
+			value: function colorFaces() {
+				var _this2 = this;
+	
+				// faces are indexed using characters
+				var faceIndices = ['a', 'b', 'c', 'd'];
+				this.mesh.geometry.faces.forEach(function (face) {
+					var numberOfSides = face instanceof _three2.default.Face3 ? 3 : 4;
+					var faceZ = (_this2.mesh.geometry.vertices[face.a].z + _this2.mesh.geometry.vertices[face.b].z + _this2.mesh.geometry.vertices[face.c].z) / 3;
+					for (var j = 0; j < numberOfSides; j++) {
+						var vertexIndex = face[faceIndices[j]];
+						var v = _this2.mesh.geometry.vertices[vertexIndex];
+	
+						var low = void 0,
+						    high = void 0,
+						    p = void 0;
+	
+						if (FLAT_SHADING) {
+							// flat shading
+	
+							if (faceZ <= 0) {
+								p = Math.min(faceZ / -7, 1);
+								low = LOW_COLOR;
+								high = UNDERWATER_COLOR;
+							} else if (faceZ < HIGH_TOP + 1) {
+								p = Math.min(faceZ / 7, 1);
+								low = LOW_COLOR;
+								high = HIGH_COLOR;
+							} else {
+								p = Math.min((faceZ - (HIGH_TOP + 1)) / 4, 1);
+								low = HIGH_COLOR;
+								high = SNOW_COLOR;
+							}
+						} else {
+							// smooth shading
+							if (faceZ <= 0) {
+								p = Math.min(v.z / -7, 1);
+								low = LOW_COLOR;
+								high = UNDERWATER_COLOR;
+							} else if (v.z < HIGH_TOP + 1) {
+								p = Math.min(v.z / 7, 1);
+								low = LOW_COLOR;
+								high = HIGH_COLOR;
+							} else {
+								p = Math.min(v.z / 12, 1);
+								low = HIGH_COLOR;
+								high = SNOW_COLOR;
+							}
+						}
+	
+						face.vertexColors[j].setRGB(low.r + (high.r - low.r) * p, low.g + (high.g - low.g) * p, low.b + (high.b - low.b) * p);
+					}
+				});
+			}
+		}]);
+
+		return RegionEditor;
+	}();
 
 /***/ }
 /******/ ]);

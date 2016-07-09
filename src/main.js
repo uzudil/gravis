@@ -6,6 +6,7 @@ import * as util from 'util';
 import Stats from 'stats.js';
 import * as controller from 'controller';
 import * as overmap from 'overmap';
+import * as regioneditor from 'regioneditor';
 
 class Gravis {
 	constructor() {
@@ -23,9 +24,9 @@ class Gravis {
 		this.width = this.height * constants.ASPECT_RATIO;
 
 		window.models = this.models = models;
-		this.camera = new THREE.PerspectiveCamera( 65, constants.ASPECT_RATIO, 1, constants.FAR_DIST );
-		//let orthoDiv = this.width / (8 * constants.SECTION);
-		//this.camera = new THREE.OrthographicCamera( this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, 1000 );
+		//this.camera = new THREE.PerspectiveCamera( 45, constants.ASPECT_RATIO, 1, constants.FAR_DIST );
+		let orthoDiv = this.width / (1 * constants.REGION_SIZE * constants.SECTION_SIZE);
+		this.camera = new THREE.OrthographicCamera( this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, constants.FAR_DIST );
 
 		this.scene = new THREE.Scene();
 
@@ -69,26 +70,25 @@ class Gravis {
 		//this.scene.fog = new THREE.Fog(0, 1, 1000);
 
 		// lights
-		//this.ambientLight = new THREE.AmbientLight( constants.AMBIENT_COLOR.getHex() );
-		//this.ambientLight.intensity = .1;
-		//this.scene.add(this.ambientLight);
-		//
-		//this.dirLight1 = new THREE.DirectionalLight( constants.DIR1_COLOR.getHex(), 0.9 );
-		//this.dirLight1.position.set( 1, 1, 1 );
-		//this.scene.add( this.dirLight1 );
-		//
-		//this.dirLight2 = new THREE.DirectionalLight( constants.DIR2_COLOR.getHex(), 0.3 );
-		//this.dirLight2.position.set(1, -1, .8 );
-		//this.scene.add( this.dirLight2 );
+		this.ambientLight = new THREE.AmbientLight( constants.AMBIENT_COLOR.getHex() );
+		this.ambientLight.intensity = .1;
+		this.scene.add(this.ambientLight);
+
+		this.dirLight1 = new THREE.DirectionalLight( constants.DIR1_COLOR.getHex(), 0.9 );
+		this.dirLight1.position.set( 1, 1, 1 );
+		this.scene.add( this.dirLight1 );
+
+		this.dirLight2 = new THREE.DirectionalLight( constants.DIR2_COLOR.getHex(), 0.3 );
+		this.dirLight2.position.set(1, -1, .8 );
+		this.scene.add( this.dirLight2 );
 
 		this.controller = new controller.Controller(this);
 		this.overmap = new overmap.OverMap(this);
+		this.regionEditor = new regioneditor.RegionEditor(this);
+
+		this.controller.start();
 
 		console.log("started");
-	}
-
-	createMap() {
-		// chop up the overmap into regions
 	}
 
 	animate() {
@@ -102,7 +102,6 @@ class Gravis {
 		this.prevTime = time;
 
 		this.controller.update(delta);
-
 		this.renderer.render(this.scene, this.camera);
 
 		if(constants.DEV_MODE) {
