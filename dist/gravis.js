@@ -76,7 +76,7 @@
 	
 	var controller = _interopRequireWildcard(_controller);
 	
-	var _overmap = __webpack_require__(9);
+	var _overmap = __webpack_require__(10);
 	
 	var overmap = _interopRequireWildcard(_overmap);
 	
@@ -51886,6 +51886,7 @@
 		mesh.geometry.needsUpdate = true;
 		mesh.geometry.colorsNeedUpdate = true;
 		mesh.geometry.elementsNeedUpdate = true;
+		mesh.geometry.verticesNeedUpdate = true;
 		mesh.needsUpdate = true;
 	}
 	
@@ -52252,7 +52253,7 @@
 	
 	var util = _interopRequireWildcard(_util);
 	
-	var _region = __webpack_require__(21);
+	var _region = __webpack_require__(9);
 	
 	var regionModel = _interopRequireWildcard(_region);
 	
@@ -52621,6 +52622,207 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
+	exports.Region = undefined;
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var HIGH_TOP = 10;
+	var BLOCK_PROPS = [{ h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, // sea
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // land
+	//{ h: HIGH_TOP, r: 1, d: 0.1, e: 4, a: 0.7 }, // hill - doesn't exist
+	{ h: 16, r: 2, d: 0.05, e: 8, a: 0.7 }, // mountain
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // forest
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // beach
+	{ h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, // LAKE
+	{ h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, // RIVER
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // TOWN
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // TOWN_CENTER
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // DUNGEON
+	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 } // ROAD
+	];
+	
+	var Region = exports.Region = function () {
+		function Region(rx, ry, region) {
+			_classCallCheck(this, Region);
+	
+			this.rx = rx;
+			this.ry = ry;
+			this.region = region;
+			this.name = "region" + this.rx.toString(16) + this.ry.toString(16);
+	
+			this.z = [];
+		}
+	
+		_createClass(Region, [{
+			key: 'save',
+			value: function save() {
+				var region = {
+					region: this.region,
+					version: 1,
+					name: this.name,
+					x: this.rx,
+					y: this.ry
+				};
+	
+				console.log("Uploading " + this.name + "...");
+				_jquery2.default.ajax({
+					type: 'POST',
+					url: "http://localhost:9090/cgi-bin/upload.py",
+					data: "name=" + this.name + "&file=" + JSON.stringify(region),
+					success: function success() {
+						console.log("Success!");
+					},
+					error: function error(_error) {
+						console.log("error: ", _error);
+					},
+					dataType: "text/json"
+				});
+				console.log("Stored on server.");
+			}
+		}, {
+			key: 'display',
+			value: function display(setZ) {
+				// init height map
+				for (var x = 0; x < constants.REGION_SIZE * constants.REGION_SIZE; x++) {
+					var a = [];
+					this.z.push(a);
+					for (var y = 0; y < constants.REGION_SIZE * constants.REGION_SIZE; y++) {
+						a.push(0);
+					}
+				}
+	
+				// create height map
+				for (var _x = 0; _x < constants.REGION_SIZE; _x++) {
+					for (var _y = 0; _y < constants.REGION_SIZE; _y++) {
+						this.makeSection(_x, _y, this.region[_x][_y]);
+					}
+				}
+	
+				// apply erosion
+				for (var i = 0; i < 5; i++) {
+					this.erode();
+				}
+	
+				// move mesh points as in height map
+				for (var _x2 = 0; _x2 < constants.VERTEX_SIZE; _x2++) {
+					for (var _y2 = 0; _y2 < constants.VERTEX_SIZE; _y2++) {
+						setZ(_x2, _y2, this.z[_x2][_y2] || 0);
+					}
+				}
+			}
+		}, {
+			key: 'makeSection',
+			value: function makeSection(x, y, sectionType) {
+				var p = BLOCK_PROPS[sectionType];
+	
+				for (var xx = 0; xx < constants.SECTION_SIZE; xx++) {
+					for (var yy = 0; yy < constants.SECTION_SIZE; yy++) {
+						var z = void 0;
+						if (p.e <= 1 || xx % p.e == 0 && yy % p.e == 0) {
+							z = Math.random() * p.r - p.r * p.d + p.h;
+						} else {
+							var tx = Math.floor(xx / p.e) * p.e;
+							var ty = Math.floor(yy / p.e) * p.e;
+							z = this.z[x * constants.SECTION_SIZE + tx][y * constants.SECTION_SIZE + ty];
+						}
+						this.z[x * constants.SECTION_SIZE + xx][y * constants.SECTION_SIZE + yy] = z;
+					}
+				}
+			}
+		}, {
+			key: 'erode',
+			value: function erode() {
+				for (var x = 1; x < constants.REGION_SIZE * constants.SECTION_SIZE - 1; x++) {
+					for (var y = 1; y < constants.REGION_SIZE * constants.SECTION_SIZE - 1; y++) {
+						this.erodeAt(x, y);
+					}
+				}
+			}
+		}, {
+			key: 'erodeAt',
+			value: function erodeAt(x, y) {
+				if (x < 1 || y < 1 || x >= constants.REGION_SIZE * constants.SECTION_SIZE - 1 || y >= constants.REGION_SIZE * constants.SECTION_SIZE - 1) return;
+	
+				var a = [];
+				for (var dx = -1; dx <= 1; dx++) {
+					for (var dy = -1; dy <= 1; dy++) {
+						a.push(this.z[x + dx][y + dy]);
+					}
+				}
+				var h = a.reduce(function (p, v) {
+					return p + v;
+				}, 0) / a.length;
+				var r = h / 6;
+				this.z[x][y] = h + Math.random() * r - r / 2;
+			}
+	
+			//update(delta) {
+			//	//console.log(delta);
+			//	if(delta < 1) {
+			//		this.water.position.z += delta * this.waterDir * WATER_SPEED;
+			//		if (Math.abs(this.water.position.z - WATER_Z) > 0.2) {
+			//			this.waterDir *= -1;
+			//		}
+			//	}
+			//}
+	
+		}], [{
+			key: 'load',
+			value: function load(rx, ry, onSuccess) {
+				var onError = arguments.length <= 3 || arguments[3] === undefined ? null : arguments[3];
+	
+				console.log("Loading region " + rx + "," + ry);
+				var name = "/models/regions/region" + rx.toString(16) + ry.toString(16) + ".json?cb=" + window.cb;
+				_jquery2.default.ajax({
+					type: 'GET',
+					dataType: 'json',
+					url: name + "?cb=" + window.cb,
+					success: function success(region) {
+						console.log("Loaded region:", region);
+						return onSuccess(new Region(rx, ry, region.region));
+					},
+					error: function error(err) {
+						console.log("Error downloading region: " + name + " error=" + err);
+						if (onError) onError();
+					}
+				});
+			}
+		}]);
+
+		return Region;
+	}();
+
+/***/ },
+/* 10 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
 	exports.OverMap = undefined;
 	
 	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
@@ -52643,15 +52845,15 @@
 	
 	var util = _interopRequireWildcard(_util);
 	
-	var _noisejs = __webpack_require__(10);
+	var _noisejs = __webpack_require__(11);
 	
 	var _noisejs2 = _interopRequireDefault(_noisejs);
 	
-	var _aStar = __webpack_require__(11);
+	var _aStar = __webpack_require__(12);
 	
 	var _aStar2 = _interopRequireDefault(_aStar);
 	
-	var _region = __webpack_require__(21);
+	var _region = __webpack_require__(9);
 	
 	var regionModel = _interopRequireWildcard(_region);
 	
@@ -53346,7 +53548,7 @@
 	}();
 
 /***/ },
-/* 10 */
+/* 11 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -53679,13 +53881,13 @@
 
 
 /***/ },
-/* 11 */
+/* 12 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assert = __webpack_require__(12)
-	  , StringSet = __webpack_require__(17)
-	  , Heap = __webpack_require__(18)
-	  , dict = __webpack_require__(20)
+	var assert = __webpack_require__(13)
+	  , StringSet = __webpack_require__(18)
+	  , Heap = __webpack_require__(19)
+	  , dict = __webpack_require__(21)
 	
 	module.exports = aStar;
 	
@@ -53800,7 +54002,7 @@
 
 
 /***/ },
-/* 12 */
+/* 13 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
@@ -53871,7 +54073,7 @@
 	// ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 	// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	
-	var util = __webpack_require__(13);
+	var util = __webpack_require__(14);
 	var hasOwn = Object.prototype.hasOwnProperty;
 	var pSlice = Array.prototype.slice;
 	var functionsHaveNames = (function () {
@@ -54297,7 +54499,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 13 */
+/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -54825,7 +55027,7 @@
 	}
 	exports.isPrimitive = isPrimitive;
 	
-	exports.isBuffer = __webpack_require__(15);
+	exports.isBuffer = __webpack_require__(16);
 	
 	function objectToString(o) {
 	  return Object.prototype.toString.call(o);
@@ -54869,7 +55071,7 @@
 	 *     prototype.
 	 * @param {function} superCtor Constructor function to inherit prototype from.
 	 */
-	exports.inherits = __webpack_require__(16);
+	exports.inherits = __webpack_require__(17);
 	
 	exports._extend = function(origin, add) {
 	  // Don't do anything if add isn't an object
@@ -54887,10 +55089,10 @@
 	  return Object.prototype.hasOwnProperty.call(obj, prop);
 	}
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(14)))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(15)))
 
 /***/ },
-/* 14 */
+/* 15 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -55015,7 +55217,7 @@
 
 
 /***/ },
-/* 15 */
+/* 16 */
 /***/ function(module, exports) {
 
 	module.exports = function isBuffer(arg) {
@@ -55026,7 +55228,7 @@
 	}
 
 /***/ },
-/* 16 */
+/* 17 */
 /***/ function(module, exports) {
 
 	if (typeof Object.create === 'function') {
@@ -55055,7 +55257,7 @@
 
 
 /***/ },
-/* 17 */
+/* 18 */
 /***/ function(module, exports) {
 
 	module.exports = Set;
@@ -55128,14 +55330,14 @@
 
 
 /***/ },
-/* 18 */
+/* 19 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(19);
+	module.exports = __webpack_require__(20);
 
 
 /***/ },
-/* 19 */
+/* 20 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// Generated by CoffeeScript 1.8.0
@@ -55516,7 +55718,7 @@
 
 
 /***/ },
-/* 20 */
+/* 21 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -55623,207 +55825,6 @@
 
 
 /***/ },
-/* 21 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-	
-	Object.defineProperty(exports, "__esModule", {
-		value: true
-	});
-	exports.Region = undefined;
-	
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-	
-	var _three = __webpack_require__(1);
-	
-	var _three2 = _interopRequireDefault(_three);
-	
-	var _jquery = __webpack_require__(2);
-	
-	var _jquery2 = _interopRequireDefault(_jquery);
-	
-	var _constants = __webpack_require__(3);
-	
-	var constants = _interopRequireWildcard(_constants);
-	
-	var _util = __webpack_require__(5);
-	
-	var util = _interopRequireWildcard(_util);
-	
-	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
-	
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-	
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-	
-	var HIGH_TOP = 10;
-	var BLOCK_PROPS = [{ h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, // sea
-	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // land
-	//{ h: HIGH_TOP, r: 1, d: 0.1, e: 4, a: 0.7 }, // hill - doesn't exist
-	{ h: 16, r: 2, d: 0.05, e: 8, a: 0.7 }, // mountain
-	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // forest
-	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // beach
-	{ h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, // LAKE
-	{ h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, // RIVER
-	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // TOWN
-	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // TOWN_CENTER
-	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, // DUNGEON
-	{ h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 } // ROAD
-	];
-	
-	var Region = exports.Region = function () {
-		function Region(rx, ry, region) {
-			_classCallCheck(this, Region);
-	
-			this.rx = rx;
-			this.ry = ry;
-			this.region = region;
-			this.name = "region" + this.rx.toString(16) + this.ry.toString(16);
-	
-			this.z = [];
-		}
-	
-		_createClass(Region, [{
-			key: 'save',
-			value: function save() {
-				var region = {
-					region: this.region,
-					version: 1,
-					name: this.name,
-					x: this.rx,
-					y: this.ry
-				};
-	
-				console.log("Uploading " + this.name + "...");
-				_jquery2.default.ajax({
-					type: 'POST',
-					url: "http://localhost:9090/cgi-bin/upload.py",
-					data: "name=" + this.name + "&file=" + JSON.stringify(region),
-					success: function success() {
-						console.log("Success!");
-					},
-					error: function error(_error) {
-						console.log("error: ", _error);
-					},
-					dataType: "text/json"
-				});
-				console.log("Stored on server.");
-			}
-		}, {
-			key: 'display',
-			value: function display(setZ) {
-				// init height map
-				for (var x = 0; x < constants.REGION_SIZE * constants.REGION_SIZE; x++) {
-					var a = [];
-					this.z.push(a);
-					for (var y = 0; y < constants.REGION_SIZE * constants.REGION_SIZE; y++) {
-						a.push(0);
-					}
-				}
-	
-				// create height map
-				for (var _x = 0; _x < constants.REGION_SIZE; _x++) {
-					for (var _y = 0; _y < constants.REGION_SIZE; _y++) {
-						this.makeSection(_x, _y, this.region[_x][_y]);
-					}
-				}
-	
-				// apply erosion
-				for (var i = 0; i < 5; i++) {
-					this.erode();
-				}
-	
-				// move mesh points as in height map
-				for (var _x2 = 0; _x2 < constants.VERTEX_SIZE; _x2++) {
-					for (var _y2 = 0; _y2 < constants.VERTEX_SIZE; _y2++) {
-						setZ(_x2, _y2, this.z[_x2][_y2] || 0);
-					}
-				}
-			}
-		}, {
-			key: 'makeSection',
-			value: function makeSection(x, y, sectionType) {
-				var p = BLOCK_PROPS[sectionType];
-	
-				for (var xx = 0; xx < constants.SECTION_SIZE; xx++) {
-					for (var yy = 0; yy < constants.SECTION_SIZE; yy++) {
-						var z = void 0;
-						if (p.e <= 1 || xx % p.e == 0 && yy % p.e == 0) {
-							z = Math.random() * p.r - p.r * p.d + p.h;
-						} else {
-							var tx = Math.floor(xx / p.e) * p.e;
-							var ty = Math.floor(yy / p.e) * p.e;
-							z = this.z[x * constants.SECTION_SIZE + tx][y * constants.SECTION_SIZE + ty];
-						}
-						this.z[x * constants.SECTION_SIZE + xx][y * constants.SECTION_SIZE + yy] = z;
-					}
-				}
-			}
-		}, {
-			key: 'erode',
-			value: function erode() {
-				for (var x = 1; x < constants.REGION_SIZE * constants.SECTION_SIZE - 1; x++) {
-					for (var y = 1; y < constants.REGION_SIZE * constants.SECTION_SIZE - 1; y++) {
-						this.erodeAt(x, y);
-					}
-				}
-			}
-		}, {
-			key: 'erodeAt',
-			value: function erodeAt(x, y) {
-				if (x < 1 || y < 1 || x >= constants.REGION_SIZE * constants.SECTION_SIZE - 1 || y >= constants.REGION_SIZE * constants.SECTION_SIZE - 1) return;
-	
-				var a = [];
-				for (var dx = -1; dx <= 1; dx++) {
-					for (var dy = -1; dy <= 1; dy++) {
-						a.push(this.z[x + dx][y + dy]);
-					}
-				}
-				var h = a.reduce(function (p, v) {
-					return p + v;
-				}, 0) / a.length;
-				var r = h / 6;
-				this.z[x][y] = h + Math.random() * r - r / 2;
-			}
-	
-			//update(delta) {
-			//	//console.log(delta);
-			//	if(delta < 1) {
-			//		this.water.position.z += delta * this.waterDir * WATER_SPEED;
-			//		if (Math.abs(this.water.position.z - WATER_Z) > 0.2) {
-			//			this.waterDir *= -1;
-			//		}
-			//	}
-			//}
-	
-		}], [{
-			key: 'load',
-			value: function load(rx, ry, onSuccess) {
-				var onError = arguments.length <= 3 || arguments[3] === undefined ? null : arguments[3];
-	
-				console.log("Loading region " + rx + "," + ry);
-				var name = "/models/regions/region" + rx.toString(16) + ry.toString(16) + ".json?cb=" + window.cb;
-				_jquery2.default.ajax({
-					type: 'GET',
-					dataType: 'json',
-					url: name + "?cb=" + window.cb,
-					success: function success(region) {
-						console.log("Loaded region:", region);
-						return onSuccess(new Region(rx, ry, region.region));
-					},
-					error: function error(err) {
-						console.log("Error downloading region: " + name + " error=" + err);
-						if (onError) onError();
-					}
-				});
-			}
-		}]);
-
-		return Region;
-	}();
-
-/***/ },
 /* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -55854,7 +55855,7 @@
 	
 	var util = _interopRequireWildcard(_util);
 	
-	var _region = __webpack_require__(21);
+	var _region = __webpack_require__(9);
 	
 	var regionModel = _interopRequireWildcard(_region);
 	

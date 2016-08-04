@@ -69,6 +69,7 @@ export function updateColors(mesh) {
 	mesh.geometry.needsUpdate = true;
 	mesh.geometry.colorsNeedUpdate = true;
 	mesh.geometry.elementsNeedUpdate = true;
+	mesh.geometry.verticesNeedUpdate = true;
 	mesh.needsUpdate = true;
 }
 
