@@ -86,19 +86,15 @@ export class Controller {
 	}
 
 	update(delta) {
-		if (this.fw) {
-			this.direction.set(0, 1, 0);
-		} else if (this.bw) {
-			this.direction.set(0, -1, 0);
-		} else if (this.right) {
-			this.direction.set(1, 0, 0);
-		} else if (this.left) {
-			this.direction.set(-1, 0, 0);
-		}
+		this.direction.set(0, 0, 0);
+		if (this.fw) this.direction.y = -1;
+		if (this.bw) this.direction.y = 1;
+		if (this.right) this.direction.x = -1;
+		if (this.left) this.direction.x = 1;
 
 		if (this.fw || this.bw || this.left || this.right) {
 			let speed = 100 * delta;
-			this.gravis.regionEditor.obj.translateOnAxis(this.direction, speed);
+			this.gravis.regionEditor.baseObj.translateOnAxis(this.direction, speed);
 		}
 	}
 }

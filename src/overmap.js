@@ -391,12 +391,12 @@ export class OverMap {
 				neighbor: (node) => {
 					let a = [];
 					let [x, y] = node;
-					if(this.canBeRoad(x - 1, y - 1)) a.push([x - 1, y - 1]);
+					//if(this.canBeRoad(x - 1, y - 1)) a.push([x - 1, y - 1]);
 					if(this.canBeRoad(x, y - 1)) a.push([x, y - 1]);
-					if(this.canBeRoad(x + 1, y - 1)) a.push([x + 1, y - 1]);
-					if(this.canBeRoad(x - 1, y + 1)) a.push([x - 1, y + 1]);
+					//if(this.canBeRoad(x + 1, y - 1)) a.push([x + 1, y - 1]);
+					//if(this.canBeRoad(x - 1, y + 1)) a.push([x - 1, y + 1]);
 					if(this.canBeRoad(x, y + 1)) a.push([x, y + 1]);
-					if(this.canBeRoad(x + 1, y + 1)) a.push([x + 1, y + 1]);
+					//if(this.canBeRoad(x + 1, y + 1)) a.push([x + 1, y + 1]);
 					if(this.canBeRoad(x + 1, y)) a.push([x + 1, y]);
 					if(this.canBeRoad(x - 1, y)) a.push([x - 1, y]);
 					return a;
@@ -509,6 +509,10 @@ export class OverMap {
 			face.color.setHex(COLORS[value]);
 		}
 		this.map.geometry.colorsNeedUpdate = true;
+	}
+
+	show() {
+		this.map.visible = true;
 	}
 
 	hide() {
