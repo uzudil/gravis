@@ -1,4 +1,5 @@
 import THREE from 'three';
+import * as constants from 'constants';
 
 export class Section {
 	constructor(name, block_props, color, fillCorners, randomize) {
@@ -13,7 +14,7 @@ export class Section {
 export const SECTIONS = [
 	new Section('sea', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false),
 	new Section('land', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false),
-	new Section('mountain', { h: 16, r: 2, d: 0.05, e: 8, a: 0.7 }, null, true, true),
+	new Section('mountain', { h: constants.SECTION_SIZE, r: 2, d: 0.05, e: 8, a: 0.7 }, null, true, true),
 	new Section('forest', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false),
 	new Section('beach', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false),
 	new Section('lake', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false),

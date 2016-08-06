@@ -56020,6 +56020,12 @@
 	
 	var _three2 = _interopRequireDefault(_three);
 	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -56034,7 +56040,7 @@
 		this.randomize = randomize;
 	};
 	
-	var SECTIONS = exports.SECTIONS = [new Section('sea', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('land', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('mountain', { h: 16, r: 2, d: 0.05, e: 8, a: 0.7 }, null, true, true), new Section('forest', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('beach', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('lake', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('river', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('town', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('town_center', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('dungeon', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('road', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, new _three2.default.Color(0.25, 0.15, 0.05), false, false)];
+	var SECTIONS = exports.SECTIONS = [new Section('sea', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('land', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('mountain', { h: constants.SECTION_SIZE, r: 2, d: 0.05, e: 8, a: 0.7 }, null, true, true), new Section('forest', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('beach', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('lake', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('river', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('town', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('town_center', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('dungeon', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('road', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, new _three2.default.Color(0.25, 0.15, 0.05), false, false)];
 
 /***/ },
 /* 24 */
