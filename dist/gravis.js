@@ -99,13 +99,79 @@
 			console.log('Gravis (c) 2016 v' + constants.VERSION);
 			window.cb = "" + constants.VERSION;
 			new model.Models(function (models) {
-				_this.init(models);
-				_this.startGame();
-				_this.animate();
+				_this.loadAssets(function () {
+					_this.loadShaders(function () {
+						_this.init(models);
+						_this.startGame();
+						_this.animate();
+					});
+				});
 			});
 		}
 	
 		_createClass(Gravis, [{
+			key: 'loadShaders',
+			value: function loadShaders(onSuccess) {
+				var _this2 = this;
+	
+				this.shaders = {};
+				var count = Object.keys(constants.SHADERS).length;
+	
+				var _loop = function _loop(k) {
+					console.log("Fetching vertex shader " + constants.SHADERS[k][0]);
+					fetch(constants.SHADERS[k][0]).then(function (response) {
+						return response.text();
+					}).then(function (responseText) {
+						console.log("Downloaded vertex shader " + constants.SHADERS[k][0]);
+						_this2.shaders[k] = [responseText];
+						console.log("Fetching fragment shader " + constants.SHADERS[k][1]);
+						fetch(constants.SHADERS[k][1]).then(function (response) {
+							return response.text();
+						}).then(function (responseText) {
+							console.log("Downloaded fragment shader " + constants.SHADERS[k][0]);
+							_this2.shaders[k].push(responseText);
+							if (Object.keys(_this2.shaders).length === count) onSuccess();
+						});
+					});
+				};
+	
+				for (var k in constants.SHADERS) {
+					_loop(k);
+				}
+			}
+		}, {
+			key: 'loadAssets',
+			value: function loadAssets(onSuccess) {
+				var _this3 = this;
+	
+				this.tex = {};
+				var count = Object.keys(constants.IMGS).length;
+				var textureLoader = new _three2.default.TextureLoader();
+	
+				var _loop2 = function _loop2(k) {
+					var url = constants.IMGS[k];
+					console.log("Loading: " + url);
+					textureLoader.load(url, function (texture) {
+						texture.wrapS = _three2.default.RepeatWrapping;
+						texture.wrapT = _three2.default.RepeatWrapping;
+	
+						_this3.tex[k] = texture;
+						console.log(Math.round(Object.keys(_this3.tex).length / count * 100) + " - Finished loading: " + url);
+						if (Object.keys(_this3.tex).length === count) {
+							onSuccess();
+						}
+					}, function (xhr) {
+						console.log(Object.keys(_this3.tex).length / count * 100 + xhr.loaded / xhr.total * 10 + '% loaded');
+					}, function (xhr) {
+						console.log("Error for url:" + url, xhr);
+					});
+				};
+	
+				for (var k in constants.IMGS) {
+					_loop2(k);
+				}
+			}
+		}, {
 			key: 'init',
 			value: function init(models) {
 				this.height = window.innerHeight;
@@ -51565,7 +51631,7 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
-	exports.VERTEX_SIZE = exports.SECTION_SIZE = exports.REGION_SIZE = exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
+	exports.SHADERS = exports.IMGS = exports.VERTEX_SIZE = exports.SECTION_SIZE = exports.REGION_SIZE = exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
 	
 	var _three = __webpack_require__(1);
 	
@@ -51593,6 +51659,21 @@
 	var REGION_SIZE = exports.REGION_SIZE = 0x10;
 	var SECTION_SIZE = exports.SECTION_SIZE = 0x10;
 	var VERTEX_SIZE = exports.VERTEX_SIZE = REGION_SIZE * SECTION_SIZE;
+	
+	var IMGS = exports.IMGS = {
+		grass1: "/images/textures/seamless-pixels.blogspot.com/Grass 02 seamless.jpg",
+		clay1: "/images/textures/seamless-pixels.blogspot.com/Seamless clay cracks.jpg",
+		ground1: "/images/textures/seamless-pixels.blogspot.com/Seamless ground sand dirt crack texture.jpg",
+		ground2: "/images/textures/seamless-pixels.blogspot.com/Seamless ground sand texture (6).jpg",
+		classicGrass1: "/images/textures/seamless-pixels.blogspot.com/Tileable classic grass and dirt texture.jpg",
+		classicGrass2: "/images/textures/seamless-pixels.blogspot.com/Tileable classic patchy grass 2 texture.jpg",
+		classicGrass3: "/images/textures/seamless-pixels.blogspot.com/Tileable classic patchy grass texture.jpg",
+		water1: "/images/textures/seamless-pixels.blogspot.com/Tileable classic water texture.jpg"
+	};
+	
+	var SHADERS = exports.SHADERS = {
+		map: ["/shaders/map.vert", "/shaders/map.frag"]
+	};
 
 /***/ },
 /* 4 */
@@ -51887,6 +51968,7 @@
 		mesh.geometry.colorsNeedUpdate = true;
 		mesh.geometry.elementsNeedUpdate = true;
 		mesh.geometry.verticesNeedUpdate = true;
+		mesh.geometry.uvsNeedUpdate = true;
 		mesh.needsUpdate = true;
 	}
 	
@@ -55757,13 +55839,7 @@
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	var WATER_Z = 1.5;
-	var WATER_SPEED = 0.3;
-	var HIGH_TOP = 10;
-	var LOW_COLOR = new _three2.default.Color(0.25, 0.5, 0.2);
-	var HIGH_COLOR = new _three2.default.Color(0.55, 0.45, 0.25);
-	var SNOW_COLOR = new _three2.default.Color(0.6, 0.6, .85);
 	var WATER_COLOR = new _three2.default.Color(0.1, 0.3, 0.85);
-	var UNDERWATER_COLOR = new _three2.default.Color(0.1, 0.2, 0.35);
 	
 	var RegionEditor = exports.RegionEditor = function () {
 		function RegionEditor(gravis) {
@@ -55784,15 +55860,26 @@
 	
 			// create the mesh with a buffer zone around it where we'll load 1 section of the neighboring region
 			var size = constants.VERTEX_SIZE + 2 * constants.SECTION_SIZE;
-			this.mesh = new _three2.default.Mesh(new _three2.default.PlaneGeometry(size, size, size, size), constants.MATERIAL);
+			this.mesh = new _three2.default.Mesh(new _three2.default.PlaneGeometry(size, size, size, size), new _three2.default.ShaderMaterial({
+				uniforms: {
+					texture_grass: { type: "t", value: gravis.tex.classicGrass1 },
+					texture_rock: { type: "t", value: gravis.tex.ground1 }
+				},
+				vertexShader: gravis.shaders.map[0],
+				fragmentShader: gravis.shaders.map[1]
+			}));
 	
-			// create the vertex colors
-			this.mesh.geometry.faces.forEach(function (face) {
-				var numberOfSides = face instanceof _three2.default.Face3 ? 3 : 4;
-				for (var j = 0; j < numberOfSides; j++) {
-					face.vertexColors[j] = new _three2.default.Color(1, 1, 1);
-				}
-			});
+			// custom attribute for how 'road' a vertex is
+			//this.road = new Float32Array( this.mesh.geometry.vertices.length );
+			//this.mesh.geometry.addAttribute( 'road', new THREE.BufferAttribute( this.road, 1 ) );
+	
+			//// create the vertex colors
+			//this.mesh.geometry.faces.forEach((face) => {
+			//	let numberOfSides = ( face instanceof THREE.Face3 ) ? 3 : 4;
+			//	for (var j = 0; j < numberOfSides; j++) {
+			//		face.vertexColors[j] = new THREE.Color(1, 1, 1);
+			//	}
+			//});
 	
 			// index the vertices
 			this.mesh["vertexGrid"] = {};
@@ -55883,122 +55970,16 @@
 							v.vy = vy;
 						}
 					});
-					console.log("Done building map: " + (Date.now() - this.startTime) + " millis. Coloring...");
-					this.startTime = Date.now();
-					this.colorFaces();
-					console.log("Done coloring: " + (Date.now() - this.startTime) + " millis.");
 					this.mesh.geometry.computeVertexNormals();
+	
+					// adjust UVs
+					for (var i = 0; i < this.mesh.geometry.faceVertexUvs[0].length; i++) {
+						for (var t = 0; t < 3; t++) {
+							this.mesh.geometry.faceVertexUvs[0][i][t].multiplyScalar(constants.SECTION_SIZE);
+						}
+					}
 					util.updateColors(this.mesh);
 				}
-			}
-		}, {
-			key: 'colorFaces',
-			value: function colorFaces() {
-				var _this2 = this;
-	
-				// faces are indexed using characters
-				var faceIndices = ['a', 'b', 'c', 'd'];
-				this.mesh.geometry.faces.forEach(function (face) {
-					var numberOfSides = face instanceof _three2.default.Face3 ? 3 : 4;
-					var faceZ = (_this2.mesh.geometry.vertices[face.a].z + _this2.mesh.geometry.vertices[face.b].z + _this2.mesh.geometry.vertices[face.c].z) / 3;
-					for (var j = 0; j < numberOfSides; j++) {
-						var vertexIndex = face[faceIndices[j]];
-						var v = _this2.mesh.geometry.vertices[vertexIndex];
-	
-						var low = void 0,
-						    high = void 0,
-						    p = void 0;
-	
-						// height-based shading
-						if (faceZ <= 0) {
-							p = Math.min(v.z / -7, 1);
-							low = LOW_COLOR;
-							high = UNDERWATER_COLOR;
-						} else if (v.z < HIGH_TOP + 1) {
-							p = Math.min(v.z / 7, 1);
-							low = LOW_COLOR;
-							high = HIGH_COLOR;
-						} else {
-							p = Math.min(v.z / 12, 1);
-							low = HIGH_COLOR;
-							high = SNOW_COLOR;
-						}
-	
-						var r = low.r + (high.r - low.r) * p;
-						var g = low.g + (high.g - low.g) * p;
-						var b = low.b + (high.b - low.b) * p;
-	
-						if (v.section && sectionDef.SECTIONS[v.section].color) {
-							var color = sectionDef.SECTIONS[v.section].color;
-	
-							var n = _this2.mesh.vertexGrid[v.vx + "," + (v.vy - constants.SECTION_SIZE)];
-							var s = _this2.mesh.vertexGrid[v.vx + "," + (v.vy + constants.SECTION_SIZE)];
-							var e = _this2.mesh.vertexGrid[v.vx + constants.SECTION_SIZE + "," + v.vy];
-							var w = _this2.mesh.vertexGrid[v.vx - constants.SECTION_SIZE + "," + v.vy];
-	
-							var xx = (v.x + constants.VERTEX_SIZE / 2) % constants.SECTION_SIZE / constants.SECTION_SIZE;
-							var yy = (v.y + constants.VERTEX_SIZE / 2) % constants.SECTION_SIZE / constants.SECTION_SIZE;
-	
-							var stopN = !n || n.section != v.section;
-							var stopS = !s || s.section != v.section;
-							var stopW = !w || w.section != v.section;
-							var stopE = !e || e.section != v.section;
-							var nn = yy < .25;
-							var ss = yy >= .75;
-							var ww = xx < .25;
-							var ee = xx >= .75;
-	
-							p = 1;
-							if (!stopN && !stopW && nn && ww) p = 0;
-							if (!stopN && !stopE && nn && ee) p = 0;
-							if (!stopS && !stopW && ss && ww) p = 0;
-							if (!stopS && !stopE && ss && ee) p = 0;
-							if (stopN && nn) p = 0;
-							if (stopS && ss) p = 0;
-							if (stopW && ww) p = 0;
-							if (stopE && ee) p = 0;
-	
-							var x1 = void 0,
-							    y1 = void 0,
-							    x2 = void 0,
-							    y2 = void 0,
-							    dd = void 0,
-							    corner = void 0;
-							if (stopN && stopW) {
-								x1 = 1;y1 = 0.5;
-								x2 = 0.5;y2 = 1;
-								dd = -1;
-							}
-							if (stopN && stopE) {
-								x1 = 0;y1 = 0.5;
-								x2 = 0.5;y2 = 1;
-								dd = 1;
-							}
-							if (stopS && stopW) {
-								x1 = 1;y1 = 0.5;
-								x2 = 0.5;y2 = 0;
-								dd = 1;
-							}
-							if (stopS && stopE) {
-								x1 = 0;y1 = 0.5;
-								x2 = 0.5;y2 = 0;
-								dd = -1;
-							}
-	
-							if (dd) {
-								// http://math.stackexchange.com/questions/274712/calculate-on-which-side-of-straign-line-is-dot-located
-								var d = (xx - x2) * (y2 - y1) - (yy - y1) * (x2 - x1);
-								if (dd < 0 && d < 0 || dd > 0 && d > 0) p = 0;
-							}
-	
-							r = r + (color.r - r) * p;
-							g = g + (color.g - g) * p;
-							b = b + (color.b - b) * p;
-						}
-	
-						face.vertexColors[j].setRGB(r, g, b);
-					}
-				});
 			}
 		}]);
 
@@ -56040,7 +56021,7 @@
 		this.randomize = randomize;
 	};
 	
-	var SECTIONS = exports.SECTIONS = [new Section('sea', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('land', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('mountain', { h: constants.SECTION_SIZE, r: 2, d: 0.05, e: 8, a: 0.7 }, null, true, true), new Section('forest', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('beach', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('lake', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('river', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('town', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('town_center', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('dungeon', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('road', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, new _three2.default.Color(0.25, 0.15, 0.05), false, false)];
+	var SECTIONS = exports.SECTIONS = [new Section('sea', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('land', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('mountain', { h: constants.SECTION_SIZE, r: constants.SECTION_SIZE / 5, d: 0.05, e: 8, a: 0.7 }, null, true, true), new Section('forest', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('beach', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('lake', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('river', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('town', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('town_center', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('dungeon', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('road', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, new _three2.default.Color(0.25, 0.15, 0.05), false, false)];
 
 /***/ },
 /* 24 */
@@ -56138,7 +56119,7 @@
 				}
 	
 				// apply erosion
-				for (var i = 0; i < 5; i++) {
+				for (var i = 0; i < 8; i++) {
 					this.erode();
 				}
 	
@@ -56205,7 +56186,7 @@
 				var h = a.reduce(function (p, v) {
 					return p + v;
 				}, 0) / a.length;
-				var r = h / 6;
+				var r = h / (constants.SECTION_SIZE * 0.5);
 				this.z[x][y].z = h + Math.random() * r - r / 2;
 			}
 	

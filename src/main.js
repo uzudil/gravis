@@ -13,10 +13,56 @@ class Gravis {
 		console.log(`Gravis (c) 2016 v${constants.VERSION}`);
 		window.cb = "" + constants.VERSION;
 		new model.Models((models) => {
-			this.init(models);
-			this.startGame();
-			this.animate();
+			this.loadAssets(() => {
+				this.loadShaders(() => {
+					this.init(models);
+					this.startGame();
+					this.animate();
+				});
+			});
 		});
+	}
+
+	loadShaders(onSuccess) {
+		this.shaders = {}
+		let count = Object.keys(constants.SHADERS).length;
+		for (let k in constants.SHADERS) {
+			console.log("Fetching vertex shader " + constants.SHADERS[k][0]);
+			fetch(constants.SHADERS[k][0]).then((response) => response.text()).then((responseText) => {
+				console.log("Downloaded vertex shader " + constants.SHADERS[k][0]);
+				this.shaders[k] = [responseText];
+				console.log("Fetching fragment shader " + constants.SHADERS[k][1]);
+				fetch(constants.SHADERS[k][1]).then((response) => response.text()).then((responseText) => {
+					console.log("Downloaded fragment shader " + constants.SHADERS[k][0]);
+					this.shaders[k].push(responseText);
+					if (Object.keys(this.shaders).length === count) onSuccess();
+				});
+			})
+		}
+	}
+
+	loadAssets(onSuccess) {
+		this.tex = {};
+		let count = Object.keys(constants.IMGS).length;
+		let textureLoader = new THREE.TextureLoader();
+		for(let k in constants.IMGS) {
+			let url = constants.IMGS[k];
+			console.log("Loading: " + url);
+			textureLoader.load(url, (texture) => {
+				texture.wrapS = THREE.RepeatWrapping;
+				texture.wrapT = THREE.RepeatWrapping;
+
+				this.tex[k] = texture;
+				console.log(Math.round(Object.keys(this.tex).length / count * 100) + " - Finished loading: " + url);
+				if(Object.keys(this.tex).length === count) {
+					onSuccess();
+				}
+			}, (xhr) => {
+				console.log( ((Object.keys(this.tex).length / count) * 100 + (xhr.loaded / xhr.total * 10)) + '% loaded' );
+			}, (xhr) => {
+				console.log("Error for url:" + url, xhr);
+			});
+		}
 	}
 
 	init(models) {

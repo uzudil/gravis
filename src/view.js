@@ -58,7 +58,7 @@ export class View {
 		}
 
 		// apply erosion
-		for(let i = 0; i < 5; i++) {
+		for(let i = 0; i < 8; i++) {
 			this.erode();
 		}
 
@@ -119,7 +119,7 @@ export class View {
 			}
 		}
 		let h = a.reduce((p, v) => p + v, 0) / a.length;
-		let r = h/6;
+		let r = h/(constants.SECTION_SIZE * 0.5);
 		this.z[x][y].z = h + Math.random() * r - r/2;
 	}
 

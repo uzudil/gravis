@@ -7,13 +7,7 @@ import * as sectionDef from 'section';
 import { View } from 'view';
 
 const WATER_Z = 1.5;
-const WATER_SPEED = 0.3;
-const HIGH_TOP = 10;
-const LOW_COLOR = new THREE.Color(0.25, 0.5, 0.2);
-const HIGH_COLOR = new THREE.Color(0.55, 0.45, 0.25);
-const SNOW_COLOR = new THREE.Color(0.6, 0.6,.85);
 const WATER_COLOR = new THREE.Color(0.1, 0.3, 0.85);
-const UNDERWATER_COLOR = new THREE.Color(0.1, 0.2, 0.35);
 
 export class RegionEditor {
 	constructor(gravis) {
@@ -23,7 +17,7 @@ export class RegionEditor {
 		this.baseObj = new THREE.Object3D();
 
 		this.obj = new THREE.Object3D();
-		this.obj.rotation.set(-Math.PI/4, 0, Math.PI/4);
+		this.obj.rotation.set(-Math.PI / 4, 0, Math.PI / 4);
 		this.obj.position.z = -500;
 		this.baseObj.add(this.obj);
 
@@ -34,33 +28,44 @@ export class RegionEditor {
 		let size = constants.VERTEX_SIZE + 2 * constants.SECTION_SIZE;
 		this.mesh = new THREE.Mesh(
 			new THREE.PlaneGeometry(size, size, size, size),
-			constants.MATERIAL
+			new THREE.ShaderMaterial({
+				uniforms: {
+					texture_grass: {type: "t", value: gravis.tex.classicGrass1},
+					texture_rock: {type: "t", value: gravis.tex.ground1}
+				},
+				vertexShader: gravis.shaders.map[0],
+				fragmentShader: gravis.shaders.map[1]
+			})
 		);
 
-		// create the vertex colors
-		this.mesh.geometry.faces.forEach((face) => {
-			let numberOfSides = ( face instanceof THREE.Face3 ) ? 3 : 4;
-			for( var j = 0; j < numberOfSides; j++ ) {
-				face.vertexColors[j] = new THREE.Color(1, 1, 1);
-			}
-		});
+		// custom attribute for how 'road' a vertex is
+		//this.road = new Float32Array( this.mesh.geometry.vertices.length );
+		//this.mesh.geometry.addAttribute( 'road', new THREE.BufferAttribute( this.road, 1 ) );
+
+		//// create the vertex colors
+		//this.mesh.geometry.faces.forEach((face) => {
+		//	let numberOfSides = ( face instanceof THREE.Face3 ) ? 3 : 4;
+		//	for (var j = 0; j < numberOfSides; j++) {
+		//		face.vertexColors[j] = new THREE.Color(1, 1, 1);
+		//	}
+		//});
 
 		// index the vertices
 		this.mesh["vertexGrid"] = {};
 		let minx = 1, maxx = -1;
-		for(let v of this.mesh.geometry.vertices) {
+		for (let v of this.mesh.geometry.vertices) {
 			// map -1 to 0, 1 to constants.VERTEX_SIZE
-			let xp = v.x + constants.VERTEX_SIZE/2;
-			let yp = v.y + constants.VERTEX_SIZE/2;
-			if(xp < minx) minx = xp;
-			if(xp > maxx) maxx = xp;
+			let xp = v.x + constants.VERTEX_SIZE / 2;
+			let yp = v.y + constants.VERTEX_SIZE / 2;
+			if (xp < minx) minx = xp;
+			if (xp > maxx) maxx = xp;
 			this.mesh.vertexGrid[xp + "," + yp] = v;
 		}
 		console.log("range is: " + minx + " to " + maxx);
 
 		this.water = new THREE.Mesh(
 			new THREE.PlaneGeometry(size, size),
-			new THREE.MeshBasicMaterial( { color: WATER_COLOR, opacity: 0.25, transparent: true }));
+			new THREE.MeshBasicMaterial({color: WATER_COLOR, opacity: 0.25, transparent: true}));
 		this.water.position.z = WATER_Z;
 		//this.waterDir = 1;
 
@@ -76,7 +81,7 @@ export class RegionEditor {
 		let toLoad = [];
 		for (let dx = -1; dx <= 1; dx++) {
 			for (let dy = -1; dy <= 1; dy++) {
-				if(rx + dx >= 0 && ry + dy >= 0 && rx + dx < regionCount && ry + dy < regionCount) toLoad.push([dx, dy]);
+				if (rx + dx >= 0 && ry + dy >= 0 && rx + dx < regionCount && ry + dy < regionCount) toLoad.push([dx, dy]);
 			}
 		}
 		this.startTime = Date.now();
@@ -85,7 +90,7 @@ export class RegionEditor {
 	}
 
 	loadRegion(toLoad, index, rx, ry) {
-		if(index < toLoad.length) {
+		if (index < toLoad.length) {
 			let [dx, dy] = toLoad[index];
 			regionModel.Region.load(rx + dx, ry + dy, (region) => {
 				this.view.display(region, dx + 1, dy + 1);
@@ -103,112 +108,15 @@ export class RegionEditor {
 					v.vy = vy;
 				}
 			});
-			console.log("Done building map: " + (Date.now() - this.startTime) + " millis. Coloring...");
-			this.startTime = Date.now();
-			this.colorFaces();
-			console.log("Done coloring: " + (Date.now() - this.startTime) + " millis.");
 			this.mesh.geometry.computeVertexNormals();
+
+			// adjust UVs
+			for(let i = 0; i < this.mesh.geometry.faceVertexUvs[0].length; i++) {
+				for(let t = 0; t < 3; t++) {
+					this.mesh.geometry.faceVertexUvs[0][i][t].multiplyScalar(constants.SECTION_SIZE);
+				}
+			}
 			util.updateColors(this.mesh);
 		}
-	}
-
-	colorFaces() {
-		// faces are indexed using characters
-		let faceIndices = ['a', 'b', 'c', 'd'];
-		this.mesh.geometry.faces.forEach((face) => {
-			let numberOfSides = ( face instanceof THREE.Face3 ) ? 3 : 4;
-			let faceZ = (this.mesh.geometry.vertices[face.a].z + this.mesh.geometry.vertices[face.b].z + this.mesh.geometry.vertices[face.c].z) / 3;
-			for (var j = 0; j < numberOfSides; j++) {
-				let vertexIndex = face[faceIndices[j]];
-				let v = this.mesh.geometry.vertices[vertexIndex];
-
-				let low, high, p;
-
-				// height-based shading
-				if (faceZ <= 0) {
-					p = Math.min(v.z / -7, 1);
-					low = LOW_COLOR;
-					high = UNDERWATER_COLOR;
-				} else if (v.z < HIGH_TOP + 1) {
-					p = Math.min(v.z / 7, 1);
-					low = LOW_COLOR;
-					high = HIGH_COLOR;
-				} else {
-					p = Math.min(v.z / 12, 1);
-					low = HIGH_COLOR;
-					high = SNOW_COLOR;
-				}
-
-				let r = low.r + (high.r - low.r) * p;
-				let g = low.g + (high.g - low.g) * p;
-				let b = low.b + (high.b - low.b) * p;
-
-
-				if(v.section && sectionDef.SECTIONS[v.section].color) {
-					let color = sectionDef.SECTIONS[v.section].color;
-
-					let n = this.mesh.vertexGrid[v.vx + "," + (v.vy - constants.SECTION_SIZE)];
-					let s = this.mesh.vertexGrid[v.vx + "," + (v.vy + constants.SECTION_SIZE)];
-					let e = this.mesh.vertexGrid[(v.vx + constants.SECTION_SIZE) + "," + v.vy];
-					let w = this.mesh.vertexGrid[(v.vx - constants.SECTION_SIZE) + "," + v.vy];
-
-					let xx = ((v.x + constants.VERTEX_SIZE / 2) % constants.SECTION_SIZE) / constants.SECTION_SIZE;
-					let yy = ((v.y + constants.VERTEX_SIZE / 2) % constants.SECTION_SIZE) / constants.SECTION_SIZE;
-
-					let stopN = !n || n.section != v.section;
-					let stopS = !s || s.section != v.section;
-					let stopW = !w || w.section != v.section;
-					let stopE = !e || e.section != v.section;
-					let nn = yy < .25;
-					let ss = yy >= .75;
-					let ww = xx < .25;
-					let ee = xx >= .75;
-
-					p = 1;
-					if(!stopN && !stopW && nn && ww) p = 0;
-					if(!stopN && !stopE && nn && ee) p = 0;
-					if(!stopS && !stopW && ss && ww) p = 0;
-					if(!stopS && !stopE && ss && ee) p = 0;
-					if(stopN && nn) p = 0;
-					if(stopS && ss) p = 0;
-					if(stopW && ww) p = 0;
-					if(stopE && ee) p = 0;
-
-					let x1, y1, x2, y2, dd, corner;
-					if(stopN && stopW) {
-						x1 = 1; y1 = 0.5;
-						x2 = 0.5; y2 = 1;
-						dd = -1;
-					}
-					if(stopN && stopE) {
-						x1 = 0; y1 = 0.5;
-						x2 = 0.5; y2 = 1;
-						dd = 1;
-					}
-					if(stopS && stopW) {
-						x1 = 1; y1 = 0.5;
-						x2 = 0.5; y2 = 0;
-						dd = 1;
-					}
-					if(stopS && stopE) {
-						x1 = 0; y1 = 0.5;
-						x2 = 0.5; y2 = 0;
-						dd = -1;
-					}
-
-					if(dd) {
-						// http://math.stackexchange.com/questions/274712/calculate-on-which-side-of-straign-line-is-dot-located
-						let d = ((xx - x2) * (y2 - y1)) - ((yy - y1) * (x2 - x1));
-						if((dd < 0 && d < 0) || (dd > 0 && d > 0)) p = 0;
-					}
-
-					r = r + (color.r - r) * p;
-					g = g + (color.g - g) * p;
-					b = b + (color.b - b) * p;
-				}
-
-				face.vertexColors[j].setRGB(r, g, b);
-			}
-		});
 	}
 }
