@@ -24,3 +24,6 @@ export const SECTIONS = [
 	new Section('dungeon', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false),
 	new Section('road', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, new THREE.Color(0.25, 0.15, 0.05), false, false)
 ];
+
+export const SECTION_BY_NAME = {};
+SECTIONS.forEach((s, index) => SECTION_BY_NAME[s.name] = index);

@@ -51631,7 +51631,7 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
-	exports.SHADERS = exports.IMGS = exports.VERTEX_SIZE = exports.SECTION_SIZE = exports.REGION_SIZE = exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
+	exports.SHADERS = exports.IMGS = exports.REGION_COUNT = exports.VERTEX_SIZE = exports.SECTION_SIZE = exports.REGION_SIZE = exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
 	
 	var _three = __webpack_require__(1);
 	
@@ -51659,6 +51659,7 @@
 	var REGION_SIZE = exports.REGION_SIZE = 0x10;
 	var SECTION_SIZE = exports.SECTION_SIZE = 0x10;
 	var VERTEX_SIZE = exports.VERTEX_SIZE = REGION_SIZE * SECTION_SIZE;
+	var REGION_COUNT = exports.REGION_COUNT = WORLD_SIZE / REGION_SIZE;
 	
 	var IMGS = exports.IMGS = {
 		grass1: "/images/textures/seamless-pixels.blogspot.com/Grass 02 seamless.jpg",
@@ -51668,7 +51669,10 @@
 		classicGrass1: "/images/textures/seamless-pixels.blogspot.com/Tileable classic grass and dirt texture.jpg",
 		classicGrass2: "/images/textures/seamless-pixels.blogspot.com/Tileable classic patchy grass 2 texture.jpg",
 		classicGrass3: "/images/textures/seamless-pixels.blogspot.com/Tileable classic patchy grass texture.jpg",
-		water1: "/images/textures/seamless-pixels.blogspot.com/Tileable classic water texture.jpg"
+		water1: "/images/textures/seamless-pixels.blogspot.com/Tileable classic water texture.jpg",
+		road1: "/images/textures/texturelib.com/brick_pavement_0068_01_tiled_s.jpg",
+		road2: "/images/textures/texturelib.com/brick_pavement_0107_02_tiled_s.jpg",
+		road3: "/images/textures/texturelib.com/brick_stone_wall_0009_02_tiled_s.jpg"
 	};
 	
 	var SHADERS = exports.SHADERS = {
@@ -55841,6 +55845,15 @@
 	var WATER_Z = 1.5;
 	var WATER_COLOR = new _three2.default.Color(0.1, 0.3, 0.85);
 	
+	var REGION_OFFSETS = [];
+	if (REGION_OFFSETS.length == 0) {
+		for (var dx = -1; dx <= 1; dx++) {
+			for (var dy = -1; dy <= 1; dy++) {
+				REGION_OFFSETS.push([dx, dy]);
+			}
+		}
+	}
+	
 	var RegionEditor = exports.RegionEditor = function () {
 		function RegionEditor(gravis) {
 			_classCallCheck(this, RegionEditor);
@@ -55859,47 +55872,42 @@
 			this.gravis.scene.add(this.baseObj);
 	
 			// create the mesh with a buffer zone around it where we'll load 1 section of the neighboring region
-			var size = constants.VERTEX_SIZE + 2 * constants.SECTION_SIZE;
-			this.mesh = new _three2.default.Mesh(new _three2.default.PlaneGeometry(size, size, size, size), new _three2.default.ShaderMaterial({
+			this.size = constants.VERTEX_SIZE + 2 * constants.SECTION_SIZE;
+			this.mesh = new _three2.default.Mesh(new _three2.default.PlaneBufferGeometry(this.size, this.size, this.size, this.size), new _three2.default.ShaderMaterial({
 				uniforms: {
 					texture_grass: { type: "t", value: gravis.tex.classicGrass1 },
-					texture_rock: { type: "t", value: gravis.tex.ground1 }
+					texture_rock: { type: "t", value: gravis.tex.ground1 },
+					texture_road: { type: "t", value: gravis.tex.road2 }
 				},
 				vertexShader: gravis.shaders.map[0],
 				fragmentShader: gravis.shaders.map[1]
 			}));
 	
-			// custom attribute for how 'road' a vertex is
-			//this.road = new Float32Array( this.mesh.geometry.vertices.length );
-			//this.mesh.geometry.addAttribute( 'road', new THREE.BufferAttribute( this.road, 1 ) );
+			// adjust UVs
+			for (var i = 0; i < this.mesh.geometry.getAttribute("uv").array.length; i++) {
+				this.mesh.geometry.getAttribute("uv").array[i] *= constants.SECTION_SIZE;
+			}
+			this.mesh.geometry.getAttribute("uv").needsUpdate = true;
 	
-			//// create the vertex colors
-			//this.mesh.geometry.faces.forEach((face) => {
-			//	let numberOfSides = ( face instanceof THREE.Face3 ) ? 3 : 4;
-			//	for (var j = 0; j < numberOfSides; j++) {
-			//		face.vertexColors[j] = new THREE.Color(1, 1, 1);
-			//	}
-			//});
-	
-			// index the vertices
-			this.mesh["vertexGrid"] = {};
-			var minx = 1,
-			    maxx = -1;
+			// a temporary geometry used for loading data
+			// it's easier to adjust vertices here and then copy them to the buffergeo than to directly change it :-(
+			this.tmp_geo = new _three2.default.PlaneGeometry(this.size, this.size, this.size, this.size);
+			this.vertexGrid = {};
 			var _iteratorNormalCompletion = true;
 			var _didIteratorError = false;
 			var _iteratorError = undefined;
 	
 			try {
-				for (var _iterator = this.mesh.geometry.vertices[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+				for (var _iterator = this.tmp_geo.vertices[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
 					var v = _step.value;
 	
 					// map -1 to 0, 1 to constants.VERTEX_SIZE
 					var xp = v.x + constants.VERTEX_SIZE / 2;
 					var yp = v.y + constants.VERTEX_SIZE / 2;
-					if (xp < minx) minx = xp;
-					if (xp > maxx) maxx = xp;
-					this.mesh.vertexGrid[xp + "," + yp] = v;
+					this.vertexGrid[xp + "," + yp] = v;
 				}
+	
+				// custom attribute for how 'road' a vertex is
 			} catch (err) {
 				_didIteratorError = true;
 				_iteratorError = err;
@@ -55915,9 +55923,10 @@
 				}
 			}
 	
-			console.log("range is: " + minx + " to " + maxx);
+			this.road = new Float32Array(this.mesh.geometry.getAttribute("position").array.length);
+			this.mesh.geometry.addAttribute('road', new _three2.default.BufferAttribute(this.road, 1));
 	
-			this.water = new _three2.default.Mesh(new _three2.default.PlaneGeometry(size, size), new _three2.default.MeshBasicMaterial({ color: WATER_COLOR, opacity: 0.25, transparent: true }));
+			this.water = new _three2.default.Mesh(new _three2.default.PlaneGeometry(this.size, this.size), new _three2.default.MeshBasicMaterial({ color: WATER_COLOR, opacity: 0.25, transparent: true }));
 			this.water.position.z = WATER_Z;
 			//this.waterDir = 1;
 	
@@ -55930,54 +55939,55 @@
 			value: function edit(rx, ry) {
 				(0, _jquery2.default)("#rx").text(rx);
 				(0, _jquery2.default)("#ry").text(ry);
-				var regionCount = constants.WORLD_SIZE / constants.REGION_SIZE;
-				var toLoad = [];
-				for (var dx = -1; dx <= 1; dx++) {
-					for (var dy = -1; dy <= 1; dy++) {
-						if (rx + dx >= 0 && ry + dy >= 0 && rx + dx < regionCount && ry + dy < regionCount) toLoad.push([dx, dy]);
-					}
-				}
-				this.startTime = Date.now();
 				console.log("Building map...");
-				this.loadRegion(toLoad, 0, rx, ry);
+				this.loadRegion(rx, ry);
 			}
 		}, {
 			key: 'loadRegion',
-			value: function loadRegion(toLoad, index, rx, ry) {
+			value: function loadRegion(rx, ry) {
 				var _this = this;
 	
-				if (index < toLoad.length) {
+				var index = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
+	
+				if (index < REGION_OFFSETS.length) {
 					(function () {
-						var _toLoad$index = _slicedToArray(toLoad[index], 2);
+						// load regions into the view
 	
-						var dx = _toLoad$index[0];
-						var dy = _toLoad$index[1];
+						var _REGION_OFFSETS$index = _slicedToArray(REGION_OFFSETS[index], 2);
 	
-						regionModel.Region.load(rx + dx, ry + dy, function (region) {
-							_this.view.display(region, dx + 1, dy + 1);
-							_this.loadRegion(toLoad, index + 1, rx, ry);
-						});
+						var dx = _REGION_OFFSETS$index[0];
+						var dy = _REGION_OFFSETS$index[1];
+	
+						if (rx + dx >= 0 && ry + dy >= 0 && rx + dx < constants.REGION_COUNT && ry + dy < constants.REGION_COUNT) {
+							regionModel.Region.load(rx + dx, ry + dy, function (region) {
+								_this.view.display(region, dx + 1, dy + 1);
+								_this.loadRegion(rx, ry, index + 1);
+							});
+						}
 					})();
 				} else {
+					// change vertices to the heights in the view
 					this.view.finish(function (x, y, point) {
 						var vx = x - 1.5 * constants.VERTEX_SIZE;
 						var vy = y - 1.5 * constants.VERTEX_SIZE;
-						var v = _this.mesh.vertexGrid[vx + "," + vy];
+						var v = _this.vertexGrid[vx + "," + vy];
 						if (v) {
 							v.z = point.z;
 							v.section = point.type;
+							v.road = point.road;
 							v.vx = vx;
 							v.vy = vy;
 						}
 					});
-					this.mesh.geometry.computeVertexNormals();
 	
-					// adjust UVs
-					for (var i = 0; i < this.mesh.geometry.faceVertexUvs[0].length; i++) {
-						for (var t = 0; t < 3; t++) {
-							this.mesh.geometry.faceVertexUvs[0][i][t].multiplyScalar(constants.SECTION_SIZE);
-						}
-					}
+					// copy the vertices into the buffergeometry
+					this.mesh.geometry.getAttribute("position").copyVector3sArray(this.tmp_geo.vertices);
+					this.mesh.geometry.getAttribute("position").needsUpdate = true;
+					this.mesh.geometry.getAttribute("road").copyArray(this.tmp_geo.vertices.map(function (v) {
+						return v.road;
+					}));
+					this.mesh.geometry.getAttribute("road").needsUpdate = true;
+					this.mesh.geometry.computeVertexNormals();
 					util.updateColors(this.mesh);
 				}
 			}
@@ -55995,7 +56005,7 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
-	exports.SECTIONS = exports.Section = undefined;
+	exports.SECTION_BY_NAME = exports.SECTIONS = exports.Section = undefined;
 	
 	var _three = __webpack_require__(1);
 	
@@ -56022,6 +56032,11 @@
 	};
 	
 	var SECTIONS = exports.SECTIONS = [new Section('sea', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('land', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('mountain', { h: constants.SECTION_SIZE, r: constants.SECTION_SIZE / 5, d: 0.05, e: 8, a: 0.7 }, null, true, true), new Section('forest', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('beach', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('lake', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('river', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('town', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('town_center', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('dungeon', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('road', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, new _three2.default.Color(0.25, 0.15, 0.05), false, false)];
+	
+	var SECTION_BY_NAME = exports.SECTION_BY_NAME = {};
+	SECTIONS.forEach(function (s, index) {
+		return SECTION_BY_NAME[s.name] = index;
+	});
 
 /***/ },
 /* 24 */
@@ -56073,7 +56088,7 @@
 				var a = [];
 				this.z.push(a);
 				for (var y = 0; y < 3 * constants.VERTEX_SIZE; y++) {
-					a.push({ z: 0, type: 0 });
+					a.push({ z: 0, type: 0, road: 0 });
 				}
 			}
 		}
@@ -56126,7 +56141,7 @@
 				// move mesh points as in height map
 				for (var _x = 0; _x < 3 * constants.VERTEX_SIZE; _x++) {
 					for (var _y = 0; _y < 3 * constants.VERTEX_SIZE; _y++) {
-						setZ(_x, _y, this.z[_x][_y] || { z: 0, type: 0 });
+						setZ(_x, _y, this.z[_x][_y] || { z: 0, type: 0, road: 0 });
 					}
 				}
 			}
@@ -56143,6 +56158,14 @@
 						var point = this.z[rx * constants.VERTEX_SIZE + x * constants.SECTION_SIZE + xx][ry * constants.VERTEX_SIZE + y * constants.SECTION_SIZE + yy];
 						point.z = this.calcZ(sectionType);
 						point.type = sectionType;
+	
+						var dx = Math.abs(xx - constants.SECTION_SIZE / 2) / (constants.SECTION_SIZE / 2);
+						var dy = Math.abs(yy - constants.SECTION_SIZE / 2) / (constants.SECTION_SIZE / 2);
+						var d = Math.sqrt(dx * dx + dy * dy); // distance from middle of the section (0 - 1)
+						var r = Math.max(1.5 - d, 0); // % of point being this type
+	
+						point.road = sectionType === sectionDef.SECTION_BY_NAME['road'] ? 1.0 : 0.0;
+						point.r = r;
 					}
 				}
 			}
@@ -56177,29 +56200,36 @@
 			value: function erodeAt(x, y) {
 				if (x < 1 || y < 1 || x >= 3 * constants.VERTEX_SIZE - 1 || y >= 3 * constants.VERTEX_SIZE - 1) return;
 	
+				this.erodeAttribAt(x, y, "z", function (avgValue) {
+					var r = avgValue / (constants.SECTION_SIZE * 0.5);
+					return avgValue + Math.random() * r - r / 2;
+				});
+				this.erodeAttribAt(x, y, "road", function (avgValue) {
+					// narrow the road
+					if (avgValue > 0.35) {
+						// add some randomness to the edges
+						if (avgValue < 0.5) return Math.random() < 0.6 ? avgValue : 0.0;else return avgValue;
+					} else {
+						return 0.0;
+					}
+				});
+			}
+		}, {
+			key: 'erodeAttribAt',
+			value: function erodeAttribAt(x, y, attrib, setValue) {
 				var a = [];
 				for (var dx = -1; dx <= 1; dx++) {
 					for (var dy = -1; dy <= 1; dy++) {
-						a.push(this.z[x + dx][y + dy].z);
+						a.push(this.z[x + dx][y + dy][attrib]);
 					}
 				}
 				var h = a.reduce(function (p, v) {
 					return p + v;
 				}, 0) / a.length;
-				var r = h / (constants.SECTION_SIZE * 0.5);
-				this.z[x][y].z = h + Math.random() * r - r / 2;
+				//let r = h / maxValue;
+				//this.z[x][y][attrib] = h + Math.random() * r - r/2;
+				this.z[x][y][attrib] = setValue(h);
 			}
-	
-			//update(delta) {
-			//	//console.log(delta);
-			//	if(delta < 1) {
-			//		this.water.position.z += delta * this.waterDir * WATER_SPEED;
-			//		if (Math.abs(this.water.position.z - WATER_Z) > 0.2) {
-			//			this.waterDir *= -1;
-			//		}
-			//	}
-			//}
-
 		}]);
 
 		return View;
