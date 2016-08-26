@@ -73,6 +73,7 @@ export class Controller {
 			}
 		});
 		$(document).keyup(( event ) => {
+			console.log(event.keyCode);
 			if(event.ctrlKey) {
 				switch (event.keyCode) {
 					case 87:
@@ -109,6 +110,11 @@ export class Controller {
 						break;
 					case 68:
 						this.right = false;
+						break;
+					case 79:
+						if($("#region_buttons").is(":visible")) {
+							this.gravis.regionEditor.view.save(this.rx, this.ry);
+						}
 						break;
 				}
 			}

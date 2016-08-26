@@ -14,7 +14,7 @@ const PERLIN_MULT = 5;
 const PERLIN_CAP = 0.3;
 const SIMPLEX_MULT = 2.3;
 const SIMPLEX_CAP = 0.25;
-const BEACH_WIDTH = 2;
+const BEACH_WIDTH = 1;
 const ERODE_COUNT = 25;
 const BORDER = 3;
 const RIVER_COUNT = 10;
@@ -391,12 +391,8 @@ export class OverMap {
 				neighbor: (node) => {
 					let a = [];
 					let [x, y] = node;
-					//if(this.canBeRoad(x - 1, y - 1)) a.push([x - 1, y - 1]);
 					if(this.canBeRoad(x, y - 1)) a.push([x, y - 1]);
-					//if(this.canBeRoad(x + 1, y - 1)) a.push([x + 1, y - 1]);
-					//if(this.canBeRoad(x - 1, y + 1)) a.push([x - 1, y + 1]);
 					if(this.canBeRoad(x, y + 1)) a.push([x, y + 1]);
-					//if(this.canBeRoad(x + 1, y + 1)) a.push([x + 1, y + 1]);
 					if(this.canBeRoad(x + 1, y)) a.push([x + 1, y]);
 					if(this.canBeRoad(x - 1, y)) a.push([x - 1, y]);
 					return a;

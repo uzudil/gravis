@@ -24,7 +24,7 @@ export class Region {
 		$.ajax({
 			type: 'POST',
 			url: "http://localhost:9090/cgi-bin/upload.py",
-			data: "name=" + this.name + "&file=" + JSON.stringify(region),
+			data: "name=" + this.name + "&expanded=0&file=" + JSON.stringify(region),
 			success: ()=>{console.log("Success!");},
 			error: (error)=>{console.log("error: ", error);},
 			dataType: "text/json"

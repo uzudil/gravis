@@ -1,4 +1,5 @@
 import THREE from 'three';
+import $ from 'jquery';
 import * as constants from 'constants';
 import * as util from 'util';
 import * as sectionDef from 'section';
@@ -19,6 +20,45 @@ export class View {
 				a.push(this.defaultPoint());
 			}
 		}
+	}
+
+	compressFloat (f) {
+		return Math.round(f * 1000) / 1000.0;
+	}
+
+	save(rx, ry) {
+		console.log("Creating data file " + name + "...");
+		let d = [];
+		for (let x = 0; x < constants.VERTEX_SIZE; x++) {
+			for (let y = 0; y < constants.VERTEX_SIZE; y++) {
+				let p = this.z[constants.VERTEX_SIZE + x][constants.VERTEX_SIZE + y];
+				d.push(this.compressFloat(p.z));
+				d.push(p.type);
+				d.push(this.compressFloat(p.road));
+				d.push(this.compressFloat(p.beach));
+				d.push(this.compressFloat(p.secondTexture));
+			}
+		}
+
+		let name = "region" + rx.toString(16) + ry.toString(16);
+		let region = {
+			region: d,
+			version: 1,
+			name: name,
+			x: rx,
+			y: ry
+		};
+
+		console.log("Uploading " + name + "...");
+		$.ajax({
+			type: 'POST',
+			url: "http://localhost:9090/cgi-bin/upload.py",
+			data: "name=" + name + "&expanded=1&file=" + JSON.stringify(region),
+			success: ()=>{console.log("Success!");},
+			error: (error)=>{console.log("error: ", error);},
+			dataType: "text/json"
+		});
+		console.log("Stored on server.");
 	}
 
 	display(region, rx, ry) {

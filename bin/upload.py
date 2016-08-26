@@ -35,9 +35,10 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
             print "pwd=%s" % os.getcwd()
             name = postvars['name'][0]
+            expanded = postvars['expanded'][0]
             val = postvars['file'][0]
             print "+++ Saving compound=", name, " size=", len(val)
-            with open('../models/regions/%s.json' % name, 'w') as file_:
+            with open('../models/%s/%s.json' % ('expanded_regions' if expanded == '1' else 'regions', name), 'w') as file_:
                 file_.write(val)
 
             # zip file

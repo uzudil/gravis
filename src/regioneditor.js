@@ -70,11 +70,6 @@ export class RegionEditor {
 
 		this.obj.add(this.mesh);
 
-
-
-
-
-
 		// custom attribute for how 'road' a vertex is
 		this.road = new Float32Array( this.mesh.geometry.getAttribute("position").array.length );
 		this.mesh.geometry.addAttribute( 'road', new THREE.BufferAttribute( this.road, 1 ) );
@@ -117,7 +112,49 @@ export class RegionEditor {
 		$("#rx").text(rx);
 		$("#ry").text(ry);
 		console.log("Building map...");
-		this.loadRegion(rx, ry);
+		this.loadOrGenerate(rx, ry);
+	}
+
+	loadOrGenerate(rx, ry) {
+		console.log("Trying to load expanded region " + rx + "," + ry);
+		let name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json?cb=" + window.cb;
+		$.ajax({
+			type: 'GET',
+			dataType: 'json',
+			url: name + "?cb=" + window.cb,
+			success: (region) => {
+				console.log("Loaded region:", region);
+				this.displayExpandedRegion(region);
+			},
+			error: (err) => {
+				console.log("Error downloading expanded region: " + name + " error=" + err);
+				console.log("Will generate region instead...");
+				this.loadRegion(rx, ry);
+			}
+		});
+	}
+
+	displayExpandedRegion(region) {
+		let i = 0;
+		let x = 0;
+		let y = 0;
+		let p = {};
+		while(i < region.region.length) {
+			p.z = region.region[i++];
+			p.type = region.region[i++];
+			p.road = region.region[i++];
+			p.beach = region.region[i++];
+			p.secondTexture = region.region[i++];
+
+			this.copyToVertex(x, y, p);
+
+			x++;
+			if(x >= constants.VERTEX_SIZE) {
+				x = 0;
+				y++;
+			}
+		}
+		this.initAttributes();
 	}
 
 	loadRegion(rx, ry, index=0) {
@@ -135,29 +172,36 @@ export class RegionEditor {
 			this.view.finish((x, y, point) => {
 				let vx = x - 1.5 * constants.VERTEX_SIZE;
 				let vy = y - 1.5 * constants.VERTEX_SIZE;
-				let v = this.vertexGrid[vx + "," + vy];
-				if (v) {
-					v.z = point.z;
-					v.section = point.type;
-					v.road = point.road;
-					v.beach = point.beach;
-					v.secondTexture = point.secondTexture;
-					v.vx = vx;
-					v.vy = vy;
-				}
+				this.copyToVertex(vx, vy, point);
 			});
-
-			// copy the vertices into the buffergeometry
-			this.mesh.geometry.getAttribute("position").copyVector3sArray(this.tmp_geo.vertices);
-			this.mesh.geometry.getAttribute("position").needsUpdate = true;
-			this.mesh.geometry.getAttribute("road").copyArray(this.tmp_geo.vertices.map(v => v.road));
-			this.mesh.geometry.getAttribute("road").needsUpdate = true;
-			this.mesh.geometry.getAttribute("beach").copyArray(this.tmp_geo.vertices.map(v => v.beach));
-			this.mesh.geometry.getAttribute("beach").needsUpdate = true;
-			this.mesh.geometry.getAttribute("secondTexture").copyArray(this.tmp_geo.vertices.map(v => v.secondTexture));
-			this.mesh.geometry.getAttribute("secondTexture").needsUpdate = true;
-			this.mesh.geometry.computeVertexNormals();
-			util.updateColors(this.mesh);
+			this.initAttributes();
 		}
+	}
+
+	copyToVertex(vx, vy, point) {
+		let v = this.vertexGrid[vx + "," + vy];
+		if (v) {
+			v.z = point.z;
+			v.section = point.type;
+			v.road = point.road;
+			v.beach = point.beach;
+			v.secondTexture = point.secondTexture;
+			v.vx = vx;
+			v.vy = vy;
+		}
+	}
+
+	initAttributes() {
+		// copy the vertices into the buffergeometry
+		this.mesh.geometry.getAttribute("position").copyVector3sArray(this.tmp_geo.vertices);
+		this.mesh.geometry.getAttribute("position").needsUpdate = true;
+		this.mesh.geometry.getAttribute("road").copyArray(this.tmp_geo.vertices.map(v => v.road));
+		this.mesh.geometry.getAttribute("road").needsUpdate = true;
+		this.mesh.geometry.getAttribute("beach").copyArray(this.tmp_geo.vertices.map(v => v.beach));
+		this.mesh.geometry.getAttribute("beach").needsUpdate = true;
+		this.mesh.geometry.getAttribute("secondTexture").copyArray(this.tmp_geo.vertices.map(v => v.secondTexture));
+		this.mesh.geometry.getAttribute("secondTexture").needsUpdate = true;
+		this.mesh.geometry.computeVertexNormals();
+		util.updateColors(this.mesh);
 	}
 }
