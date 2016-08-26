@@ -10,8 +10,10 @@ export class Controller {
 		this.gravis = gravis;
 		this.fw = this.bw = this.left = this.right = false;
 		this.direction = new THREE.Vector3(0, 0, 0);
-		this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-		this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+		//this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+		//this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+		this.rx = 9;
+		this.ry = 3;
 
 		this.theta = 0;
 
@@ -49,7 +51,7 @@ export class Controller {
 			let mx = event.originalEvent.movementX;
 			// let my = event.originalEvent.movementY;
 			this.theta += mx * 0.01;
-			this.gravis.camera.position.set(500 * Math.cos(this.theta), 500, 500 * Math.sin(this.theta));
+			this.gravis.camera.position.set(100 * Math.cos(this.theta), 100, 100 * Math.sin(this.theta));
 			this.gravis.camera.lookAt(constants.ORIGIN);
 		});
 		$(document).keydown(( event ) => {
@@ -134,8 +136,8 @@ export class Controller {
 
 	update(delta) {
 		this.direction.set(0, 0, 0);
-		if (this.fw) this.direction.y = -1;
-		if (this.bw) this.direction.y = 1;
+		if (this.fw) this.direction.z = -1;
+		if (this.bw) this.direction.z = 1;
 		if (this.right) this.direction.x = -1;
 		if (this.left) this.direction.x = 1;
 

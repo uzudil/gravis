@@ -2,8 +2,12 @@ varying vec2 vUv;
 varying vec3 vPosition;
 
 attribute float road;
+attribute float beach;
+attribute float secondTexture;
 
 varying float vRoad;
+varying float vBeach;
+varying float vSecondTexture;
 varying vec3 vNormal;
 varying float key1Intensity;
 varying float key2Intensity;
@@ -13,6 +17,8 @@ void main( void ) {
     vUv = uv;
     vPosition = position;
     vRoad = road;
+    vBeach = beach;
+    vSecondTexture = secondTexture;
     gl_Position = projectionMatrix * modelViewMatrix * vec4(vPosition, 1);
 
     // send normal to fragment shader

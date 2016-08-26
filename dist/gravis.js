@@ -51714,7 +51714,8 @@
 		road1: "../images/textures/texturelib.com/brick_pavement_0068_01_tiled_s.jpg",
 		road2: "../images/textures/texturelib.com/brick_pavement_0107_02_tiled_s.jpg",
 		road3: "../images/textures/texturelib.com/brick_stone_wall_0009_02_tiled_s.jpg",
-		waterNormals: "../images/waternormals.jpg"
+		waterNormals: "../images/waternormals.jpg",
+		sand1: "../images/textures/seamless-pixels.blogspot.com/Seamless beach sand.jpg"
 	};
 	
 	var SHADERS = exports.SHADERS = ["../shaders/map.vert", "../shaders/map.frag", "../shaders/water.vert", "../shaders/water.frag"];
@@ -52398,8 +52399,10 @@
 			this.gravis = gravis;
 			this.fw = this.bw = this.left = this.right = false;
 			this.direction = new _three2.default.Vector3(0, 0, 0);
-			this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-			this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+			//this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+			//this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+			this.rx = 9;
+			this.ry = 3;
 	
 			this.theta = 0;
 	
@@ -52436,7 +52439,7 @@
 				var mx = event.originalEvent.movementX;
 				// let my = event.originalEvent.movementY;
 				_this.theta += mx * 0.01;
-				_this.gravis.camera.position.set(500 * Math.cos(_this.theta), 500, 500 * Math.sin(_this.theta));
+				_this.gravis.camera.position.set(100 * Math.cos(_this.theta), 100, 100 * Math.sin(_this.theta));
 				_this.gravis.camera.lookAt(constants.ORIGIN);
 			});
 			(0, _jquery2.default)(document).keydown(function (event) {
@@ -52532,8 +52535,8 @@
 			key: 'update',
 			value: function update(delta) {
 				this.direction.set(0, 0, 0);
-				if (this.fw) this.direction.y = -1;
-				if (this.bw) this.direction.y = 1;
+				if (this.fw) this.direction.z = -1;
+				if (this.bw) this.direction.z = 1;
 				if (this.right) this.direction.x = -1;
 				if (this.left) this.direction.x = 1;
 	
@@ -55959,8 +55962,10 @@
 			this.mesh = new _three2.default.Mesh(new _three2.default.PlaneBufferGeometry(this.size, this.size, this.size, this.size), new _three2.default.ShaderMaterial({
 				uniforms: {
 					texture_grass: { type: "t", value: gravis.tex.classicGrass1 },
+					texture_grass2: { type: "t", value: gravis.tex.classicGrass2 },
 					texture_rock: { type: "t", value: gravis.tex.ground1 },
-					texture_road: { type: "t", value: gravis.tex.road2 }
+					texture_road: { type: "t", value: gravis.tex.road2 },
+					texture_sand: { type: "t", value: gravis.tex.sand1 }
 				},
 				vertexShader: gravis.shaders.map[0],
 				fragmentShader: gravis.shaders.map[1]
@@ -56009,6 +56014,10 @@
 			// custom attribute for how 'road' a vertex is
 			this.road = new Float32Array(this.mesh.geometry.getAttribute("position").array.length);
 			this.mesh.geometry.addAttribute('road', new _three2.default.BufferAttribute(this.road, 1));
+			this.beach = new Float32Array(this.mesh.geometry.getAttribute("position").array.length);
+			this.mesh.geometry.addAttribute('beach', new _three2.default.BufferAttribute(this.beach, 1));
+			this.secondTexture = new Float32Array(this.mesh.geometry.getAttribute("position").array.length);
+			this.mesh.geometry.addAttribute('secondTexture', new _three2.default.BufferAttribute(this.secondTexture, 1));
 	
 			this.water = new _three2.default.Water(this.gravis.renderer, this.gravis.camera, this.gravis.scene, {
 				textureWidth: 512,
@@ -56079,6 +56088,8 @@
 							v.z = point.z;
 							v.section = point.type;
 							v.road = point.road;
+							v.beach = point.beach;
+							v.secondTexture = point.secondTexture;
 							v.vx = vx;
 							v.vy = vy;
 						}
@@ -56091,6 +56102,14 @@
 						return v.road;
 					}));
 					this.mesh.geometry.getAttribute("road").needsUpdate = true;
+					this.mesh.geometry.getAttribute("beach").copyArray(this.tmp_geo.vertices.map(function (v) {
+						return v.beach;
+					}));
+					this.mesh.geometry.getAttribute("beach").needsUpdate = true;
+					this.mesh.geometry.getAttribute("secondTexture").copyArray(this.tmp_geo.vertices.map(function (v) {
+						return v.secondTexture;
+					}));
+					this.mesh.geometry.getAttribute("secondTexture").needsUpdate = true;
 					this.mesh.geometry.computeVertexNormals();
 					util.updateColors(this.mesh);
 				}
@@ -56663,6 +56682,7 @@
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
+	var DEFAULT_POINT = { z: 0, type: 0, road: 0, secondTexture: 0, beach: 0 };
 	/**
 	 * All displayed region data in memory.
 	 */
@@ -56678,7 +56698,7 @@
 				var a = [];
 				this.z.push(a);
 				for (var y = 0; y < 3 * constants.VERTEX_SIZE; y++) {
-					a.push({ z: 0, type: 0, road: 0 });
+					a.push(this.defaultPoint());
 				}
 			}
 		}
@@ -56731,9 +56751,14 @@
 				// move mesh points as in height map
 				for (var _x = 0; _x < 3 * constants.VERTEX_SIZE; _x++) {
 					for (var _y = 0; _y < 3 * constants.VERTEX_SIZE; _y++) {
-						setZ(_x, _y, this.z[_x][_y] || { z: 0, type: 0, road: 0 });
+						setZ(_x, _y, this.z[_x][_y] || this.defaultPoint());
 					}
 				}
+			}
+		}, {
+			key: 'defaultPoint',
+			value: function defaultPoint() {
+				return Object.assign({}, DEFAULT_POINT);
 			}
 		}, {
 			key: 'isSame',
@@ -56745,7 +56770,9 @@
 			value: function makeSection(rx, ry, x, y, sectionType) {
 				for (var xx = 0; xx < constants.SECTION_SIZE; xx++) {
 					for (var yy = 0; yy < constants.SECTION_SIZE; yy++) {
-						var point = this.z[rx * constants.VERTEX_SIZE + x * constants.SECTION_SIZE + xx][ry * constants.VERTEX_SIZE + y * constants.SECTION_SIZE + yy];
+						var px = rx * constants.VERTEX_SIZE + x * constants.SECTION_SIZE + xx;
+						var py = ry * constants.VERTEX_SIZE + y * constants.SECTION_SIZE + yy;
+						var point = this.z[px][py];
 						point.z = this.calcZ(sectionType);
 						point.type = sectionType;
 	
@@ -56754,10 +56781,17 @@
 						var d = Math.sqrt(dx * dx + dy * dy); // distance from middle of the section (0 - 1)
 						var r = Math.max(1.5 - d, 0); // % of point being this type
 	
-						point.road = sectionType === sectionDef.SECTION_BY_NAME['road'] ? 1.0 : 0.0;
+						point.road = this.isOfType(sectionType, 'road') ? 1.0 : 0.0;
+						point.beach = this.isOfType(sectionType, 'beach') || this.isOfType(sectionType, 'sea') ? 1.0 : 0.0;
+						point.secondTexture = (this.isOfType(sectionType, 'land') || this.isOfType(sectionType, 'forest')) && Math.random() >= 0.5 ? 1 : 0;
 						point.r = r;
 					}
 				}
+			}
+		}, {
+			key: 'isOfType',
+			value: function isOfType(sectionType, sectionTypeName) {
+				return sectionType === sectionDef.SECTION_BY_NAME[sectionTypeName];
 			}
 		}, {
 			key: 'makeSubSection',
@@ -56799,6 +56833,19 @@
 					if (avgValue > 0.35) {
 						// add some randomness to the edges
 						if (avgValue < 0.5) return Math.random() < 0.6 ? avgValue : 0.0;else return avgValue;
+					} else {
+						return 0.0;
+					}
+				});
+				this.erodeAttribAt(x, y, "beach", function (avgValue) {
+					// add some randomness to the edges
+					if (avgValue < 0.75) return Math.random() < 0.8 ? avgValue : 0.0;else return avgValue;
+				});
+				this.erodeAttribAt(x, y, "secondTexture", function (avgValue) {
+					// narrow the road
+					if (avgValue > 0.4) {
+						// add some randomness to the edges
+						if (avgValue < 0.5) return Math.random() < 0.6 ? avgValue : 0.0;else return 1.0;
 					} else {
 						return 0.0;
 					}

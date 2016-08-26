@@ -36,7 +36,8 @@ export const TEX = {
 	road1: "../images/textures/texturelib.com/brick_pavement_0068_01_tiled_s.jpg",
 	road2: "../images/textures/texturelib.com/brick_pavement_0107_02_tiled_s.jpg",
 	road3: "../images/textures/texturelib.com/brick_stone_wall_0009_02_tiled_s.jpg",
-	waterNormals: "../images/waternormals.jpg"
+	waterNormals: "../images/waternormals.jpg",
+	sand1: "../images/textures/seamless-pixels.blogspot.com/Seamless beach sand.jpg"
 };
 
 export const SHADERS = [

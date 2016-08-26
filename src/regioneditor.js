@@ -41,8 +41,10 @@ export class RegionEditor {
 			new THREE.ShaderMaterial({
 				uniforms: {
 					texture_grass: {type: "t", value: gravis.tex.classicGrass1},
+					texture_grass2: {type: "t", value: gravis.tex.classicGrass2},
 					texture_rock: {type: "t", value: gravis.tex.ground1},
-					texture_road: {type: "t", value: gravis.tex.road2}
+					texture_road: {type: "t", value: gravis.tex.road2},
+					texture_sand: {type: "t", value: gravis.tex.sand1}
 				},
 				vertexShader: gravis.shaders.map[0],
 				fragmentShader: gravis.shaders.map[1]
@@ -76,6 +78,10 @@ export class RegionEditor {
 		// custom attribute for how 'road' a vertex is
 		this.road = new Float32Array( this.mesh.geometry.getAttribute("position").array.length );
 		this.mesh.geometry.addAttribute( 'road', new THREE.BufferAttribute( this.road, 1 ) );
+		this.beach = new Float32Array( this.mesh.geometry.getAttribute("position").array.length );
+		this.mesh.geometry.addAttribute( 'beach', new THREE.BufferAttribute( this.beach, 1 ) );
+		this.secondTexture = new Float32Array( this.mesh.geometry.getAttribute("position").array.length );
+		this.mesh.geometry.addAttribute( 'secondTexture', new THREE.BufferAttribute( this.secondTexture, 1 ) );
 
 		this.water = new THREE.Water( this.gravis.renderer, this.gravis.camera, this.gravis.scene, {
 			textureWidth: 512,
@@ -134,6 +140,8 @@ export class RegionEditor {
 					v.z = point.z;
 					v.section = point.type;
 					v.road = point.road;
+					v.beach = point.beach;
+					v.secondTexture = point.secondTexture;
 					v.vx = vx;
 					v.vy = vy;
 				}
@@ -144,6 +152,10 @@ export class RegionEditor {
 			this.mesh.geometry.getAttribute("position").needsUpdate = true;
 			this.mesh.geometry.getAttribute("road").copyArray(this.tmp_geo.vertices.map(v => v.road));
 			this.mesh.geometry.getAttribute("road").needsUpdate = true;
+			this.mesh.geometry.getAttribute("beach").copyArray(this.tmp_geo.vertices.map(v => v.beach));
+			this.mesh.geometry.getAttribute("beach").needsUpdate = true;
+			this.mesh.geometry.getAttribute("secondTexture").copyArray(this.tmp_geo.vertices.map(v => v.secondTexture));
+			this.mesh.geometry.getAttribute("secondTexture").needsUpdate = true;
 			this.mesh.geometry.computeVertexNormals();
 			util.updateColors(this.mesh);
 		}

@@ -3,6 +3,7 @@ import * as constants from 'constants';
 import * as util from 'util';
 import * as sectionDef from 'section';
 
+const DEFAULT_POINT = {z: 0, type: 0, road: 0, secondTexture: 0, beach: 0};
 /**
  * All displayed region data in memory.
  */
@@ -15,7 +16,7 @@ export class View {
 			let a = [];
 			this.z.push(a);
 			for (let y = 0; y < 3 * constants.VERTEX_SIZE; y++) {
-				a.push({z: 0, type: 0, road: 0});
+				a.push(this.defaultPoint());
 			}
 		}
 	}
@@ -65,9 +66,13 @@ export class View {
 		// move mesh points as in height map
 		for(let x = 0; x < 3 * constants.VERTEX_SIZE; x++) {
 			for (let y = 0; y < 3 * constants.VERTEX_SIZE; y++) {
-				setZ(x, y, this.z[x][y] || {z: 0, type: 0, road: 0});
+				setZ(x, y, this.z[x][y] || this.defaultPoint());
 			}
 		}
+	}
+
+	defaultPoint() {
+		return Object.assign({}, DEFAULT_POINT);
 	}
 
 	isSame(a, b) {
@@ -77,7 +82,9 @@ export class View {
 	makeSection(rx, ry, x, y, sectionType) {
 		for(let xx = 0; xx < constants.SECTION_SIZE; xx++) {
 			for(let yy = 0; yy < constants.SECTION_SIZE; yy++) {
-				let point = this.z[rx * constants.VERTEX_SIZE + x * constants.SECTION_SIZE + xx][ry * constants.VERTEX_SIZE + y * constants.SECTION_SIZE + yy];
+				let px = rx * constants.VERTEX_SIZE + x * constants.SECTION_SIZE + xx;
+				let py = ry * constants.VERTEX_SIZE + y * constants.SECTION_SIZE + yy;
+				let point = this.z[px][py];
 				point.z = this.calcZ(sectionType);
 				point.type = sectionType;
 
@@ -86,10 +93,16 @@ export class View {
 				let d = Math.sqrt((dx * dx) + (dy * dy)); // distance from middle of the section (0 - 1)
 				let r = Math.max(1.5 - d, 0); // % of point being this type
 
-				point.road = sectionType === sectionDef.SECTION_BY_NAME['road'] ? 1.0 : 0.0;
+				point.road = this.isOfType(sectionType, 'road') ? 1.0 : 0.0;
+				point.beach = this.isOfType(sectionType, 'beach') || this.isOfType(sectionType, 'sea') ? 1.0 : 0.0;
+				point.secondTexture = (this.isOfType(sectionType, 'land') || this.isOfType(sectionType, 'forest')) && Math.random() >= 0.5 ? 1 : 0;
 				point.r = r;
 			}
 		}
+	}
+
+	isOfType(sectionType, sectionTypeName) {
+		return sectionType === sectionDef.SECTION_BY_NAME[sectionTypeName];
 	}
 
 	makeSubSection(x, y, sectionType, dx, dy) {
@@ -130,6 +143,21 @@ export class View {
 				// add some randomness to the edges
 				if(avgValue < 0.5) return Math.random() < 0.6 ? avgValue : 0.0;
 				else return avgValue;
+			} else {
+				return 0.0;
+			}
+		}));
+		this.erodeAttribAt(x, y, "beach", (avgValue => {
+			// add some randomness to the edges
+			if(avgValue < 0.75) return Math.random() < 0.8 ? avgValue : 0.0;
+			else return avgValue;
+		}));
+		this.erodeAttribAt(x, y, "secondTexture", (avgValue => {
+			// narrow the road
+			if(avgValue > 0.4) {
+				// add some randomness to the edges
+				if(avgValue < 0.5) return Math.random() < 0.6 ? avgValue : 0.0;
+				else return 1.0;
 			} else {
 				return 0.0;
 			}

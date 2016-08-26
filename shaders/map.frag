@@ -1,10 +1,14 @@
 uniform sampler2D texture_grass;
+uniform sampler2D texture_grass2;
 uniform sampler2D texture_rock;
 uniform sampler2D texture_road;
+uniform sampler2D texture_sand;
 
 varying vec2 vUv;
 varying vec3 vPosition;
 varying float vRoad;
+varying float vBeach;
+varying float vSecondTexture;
 varying vec3 vNormal;
 varying float key1Intensity;
 varying float key2Intensity;
@@ -13,12 +17,27 @@ varying float key3Intensity;
 void main() {
     // Texture loading
     vec4 diffuseGrass = texture2D( texture_grass, vUv );
+    vec4 diffuseGrass2 = texture2D( texture_grass2, vUv );
     vec4 diffuseRock = texture2D( texture_rock, vUv );
     vec4 diffuseSnow = vec4(.8, .9, 1.0, 1.0);
     vec4 diffuseWater = vec4(.1, .2, 0.5, 1.0);
+//    vec4 diffuseBeach = vec4(.99, .95, 0.5, 1.0);
+    vec4 diffuseBeach = texture2D( texture_sand, vUv );
     vec4 diffuseRoad = texture2D( texture_road, vUv );
     vec4 color = diffuseGrass; // grass base
 
+    // second texture
+    color = mix(
+        color,
+        diffuseGrass2,
+        max(min(vSecondTexture, 1.0), 0.0)
+    );
+    // beach
+    color = mix(
+        color,
+        diffuseBeach,
+        max(min(vBeach, 1.0), 0.0)
+    );
     // road
     color = mix(
         color,
