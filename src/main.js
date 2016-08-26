@@ -7,13 +7,14 @@ import Stats from 'stats.js';
 import * as controller from 'controller';
 import * as overmap from 'overmap';
 import * as regioneditor from 'regioneditor';
+import * as skybox from 'skybox';
 
 class Gravis {
 	constructor() {
 		console.log(`Gravis (c) 2016 v${constants.VERSION}`);
 		window.cb = "" + constants.VERSION;
 		new model.Models((models) => {
-			this.loadAssets(() => {
+			this.loadTextures(() => {
 				this.loadShaders(() => {
 					this.init(models);
 					this.startGame();
@@ -24,29 +25,34 @@ class Gravis {
 	}
 
 	loadShaders(onSuccess) {
-		this.shaders = {}
-		let count = Object.keys(constants.SHADERS).length;
-		for (let k in constants.SHADERS) {
-			console.log("Fetching vertex shader " + constants.SHADERS[k][0]);
-			fetch(constants.SHADERS[k][0]).then((response) => response.text()).then((responseText) => {
-				console.log("Downloaded vertex shader " + constants.SHADERS[k][0]);
-				this.shaders[k] = [responseText];
-				console.log("Fetching fragment shader " + constants.SHADERS[k][1]);
-				fetch(constants.SHADERS[k][1]).then((response) => response.text()).then((responseText) => {
-					console.log("Downloaded fragment shader " + constants.SHADERS[k][0]);
-					this.shaders[k].push(responseText);
-					if (Object.keys(this.shaders).length === count) onSuccess();
-				});
-			})
+		this.shaders = {};
+
+		let downloadedCount = 0;
+		for(let shader of constants.SHADERS) {
+			// what are we loading?
+			let m = shader.match(/^.*\/(.*)\.(vert|frag)$/);
+			let name = m[1];
+			let type = m[2] === 'vert' ? 0 : 1;
+			if(!this.shaders[name]) this.shaders[name] = ["", ""];
+
+			console.log("Fetching " + shader);
+			fetch(shader).then((response) => response.text()).then((responseText) => {
+				console.log("Downloaded " + shader);
+				 this.shaders[name][type] = responseText;
+				if (++downloadedCount === constants.SHADERS.length) {
+					console.log("All shaders downloaded: ", this.shaders);
+					onSuccess();
+				}
+			});
 		}
 	}
 
-	loadAssets(onSuccess) {
+	loadTextures(onSuccess) {
 		this.tex = {};
-		let count = Object.keys(constants.IMGS).length;
+		let count = Object.keys(constants.TEX).length;
 		let textureLoader = new THREE.TextureLoader();
-		for(let k in constants.IMGS) {
-			let url = constants.IMGS[k];
+		for(let k in constants.TEX) {
+			let url = constants.TEX[k];
 			console.log("Loading: " + url);
 			textureLoader.load(url, (texture) => {
 				texture.wrapS = THREE.RepeatWrapping;
@@ -70,15 +76,11 @@ class Gravis {
 		this.width = this.height * constants.ASPECT_RATIO;
 
 		window.models = this.models = models;
-		//this.camera = new THREE.PerspectiveCamera( 45, constants.ASPECT_RATIO, 1, constants.FAR_DIST );
-		let orthoDiv = this.width / (1 * constants.REGION_SIZE * constants.SECTION_SIZE);
-		this.camera = new THREE.OrthographicCamera( this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, constants.FAR_DIST );
+		this.camera = new THREE.PerspectiveCamera( 45, constants.ASPECT_RATIO, 1, constants.FAR_DIST );
+		//let orthoDiv = this.width / (1 * constants.REGION_SIZE * constants.SECTION_SIZE);
+		//this.camera = new THREE.OrthographicCamera( this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, constants.FAR_DIST );
 
 		this.scene = new THREE.Scene();
-
-		//this.camera.rotation.set( 0, 0, 0 );
-		this.camera.position.set(0, 0, 500);
-		this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
 		this.renderer = new THREE.WebGLRenderer();
 
@@ -102,6 +104,8 @@ class Gravis {
 
 		this.prevTime = 0;
 
+		this.scene.add(new skybox.SkyBox().skyBox);
+
 		$("body").append( this.renderer.domElement );
 		$("canvas").click((event) => {
 			var element = event.target;
@@ -120,9 +124,13 @@ class Gravis {
 		this.ambientLight.intensity = .1;
 		this.scene.add(this.ambientLight);
 
-		this.dirLight1 = new THREE.DirectionalLight( constants.DIR1_COLOR.getHex(), 0.9 );
+		this.dirLight1 = new THREE.DirectionalLight( 0xffffbb, 1 );
 		this.dirLight1.position.set( 1, 1, 1 );
 		this.scene.add( this.dirLight1 );
+
+		//this.dirLight1 = new THREE.DirectionalLight( constants.DIR1_COLOR.getHex(), 0.9 );
+		//this.dirLight1.position.set( 1, 1, 1 );
+		//this.scene.add( this.dirLight1 );
 
 		this.dirLight2 = new THREE.DirectionalLight( constants.DIR2_COLOR.getHex(), 0.3 );
 		this.dirLight2.position.set(1, -1, .8 );
@@ -131,6 +139,14 @@ class Gravis {
 		this.controller = new controller.Controller(this);
 		this.overmap = new overmap.OverMap(this);
 		this.regionEditor = new regioneditor.RegionEditor(this);
+
+		//this.camera.rotation.set( 0, 0, 0 );
+		this.camera.position.set(100, 100, 100);
+		this.camera.lookAt(constants.ORIGIN);
+
+		this.regionEditor.obj.rotation.set(-Math.PI / 2, 0, 0);
+		//this.obj.rotation.set(-Math.PI / 4, 0, Math.PI / 4);
+		//this.obj.position.z = -500;
 
 		this.controller.start();
 
@@ -146,6 +162,8 @@ class Gravis {
 		var time = Date.now();
 		var delta = ( time - this.prevTime ) / 1000;
 		this.prevTime = time;
+
+		this.regionEditor.update(time, delta);
 
 		this.controller.update(delta);
 		this.renderer.render(this.scene, this.camera);

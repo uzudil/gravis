@@ -15,6 +15,7 @@ void main() {
     vec4 diffuseGrass = texture2D( texture_grass, vUv );
     vec4 diffuseRock = texture2D( texture_rock, vUv );
     vec4 diffuseSnow = vec4(.8, .9, 1.0, 1.0);
+    vec4 diffuseWater = vec4(.1, .2, 0.5, 1.0);
     vec4 diffuseRoad = texture2D( texture_road, vUv );
     vec4 color = diffuseGrass; // grass base
 
@@ -23,6 +24,12 @@ void main() {
         color,
         diffuseRoad,
         max(min(vRoad, 1.0), 0.0)
+    );
+    // add under water
+    color = mix(
+        color,
+        diffuseWater,
+        1.0 - max(min((vPosition.z + 4.0) / 4.0, 1.0), 0.0) // fade rock from -4-0
     );
     // add rock
     color = mix(

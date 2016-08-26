@@ -1,4 +1,5 @@
 import THREE from 'three';
+import * as water from 'WaterShader';
 import $ from 'jquery';
 import * as constants from 'constants';
 import * as util from 'util';
@@ -8,6 +9,8 @@ import { View } from 'view';
 
 const WATER_Z = 1.5;
 const WATER_COLOR = new THREE.Color(0.1, 0.3, 0.85);
+const TIME_VEC = new THREE.Vector3(0, 0, 0);
+const THE_CLOCK = new THREE.Clock();
 
 const REGION_OFFSETS = [];
 if(REGION_OFFSETS.length == 0) {
@@ -26,8 +29,6 @@ export class RegionEditor {
 		this.baseObj = new THREE.Object3D();
 
 		this.obj = new THREE.Object3D();
-		this.obj.rotation.set(-Math.PI / 4, 0, Math.PI / 4);
-		this.obj.position.z = -500;
 		this.baseObj.add(this.obj);
 
 		//this.obj.scale.set(constants.EDITOR_SCALE, constants.EDITOR_SCALE, constants.EDITOR_SCALE);
@@ -65,18 +66,45 @@ export class RegionEditor {
 			this.vertexGrid[xp + "," + yp] = v;
 		}
 
+		this.obj.add(this.mesh);
+
+
+
+
+
+
 		// custom attribute for how 'road' a vertex is
 		this.road = new Float32Array( this.mesh.geometry.getAttribute("position").array.length );
 		this.mesh.geometry.addAttribute( 'road', new THREE.BufferAttribute( this.road, 1 ) );
 
-		this.water = new THREE.Mesh(
-			new THREE.PlaneGeometry(this.size, this.size),
-			new THREE.MeshBasicMaterial({color: WATER_COLOR, opacity: 0.25, transparent: true}));
-		this.water.position.z = WATER_Z;
-		//this.waterDir = 1;
+		this.water = new THREE.Water( this.gravis.renderer, this.gravis.camera, this.gravis.scene, {
+			textureWidth: 512,
+			textureHeight: 512,
+			waterNormals: this.gravis.tex.waterNormals,
+			alpha: 	0.5,
+			sunDirection: this.gravis.dirLight1.position.clone().normalize(),
+			// sunDirection: light.position.clone().normalize(),
+			sunColor: 0xffffff,
+			waterColor: 0x88eeff,
+			//waterColor: 0x001e0f,
+			distortionScale: 20.0,
+		} );
 
-		this.obj.add(this.mesh);
-		this.obj.add(this.water);
+		this.mirrorMesh = new THREE.Mesh(
+			new THREE.PlaneBufferGeometry( this.size, this.size ),
+			this.water.material
+		);
+
+		this.mirrorMesh.add( this.water );
+		this.mirrorMesh.position.z = WATER_Z;
+		this.obj.add( this.mirrorMesh );
+	}
+
+	update (time, delta) {
+		TIME_VEC.x += THE_CLOCK.getDelta();
+
+		this.water.material.uniforms.time.value += 1.0 / 60.0;
+		this.water.render();
 	}
 
 	edit(rx, ry) {

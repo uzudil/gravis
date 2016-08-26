@@ -84,6 +84,10 @@
 	
 	var regioneditor = _interopRequireWildcard(_regioneditor);
 	
+	var _skybox = __webpack_require__(27);
+	
+	var skybox = _interopRequireWildcard(_skybox);
+	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -99,7 +103,7 @@
 			console.log('Gravis (c) 2016 v' + constants.VERSION);
 			window.cb = "" + constants.VERSION;
 			new model.Models(function (models) {
-				_this.loadAssets(function () {
+				_this.loadTextures(function () {
 					_this.loadShaders(function () {
 						_this.init(models);
 						_this.startGame();
@@ -115,41 +119,64 @@
 				var _this2 = this;
 	
 				this.shaders = {};
-				var count = Object.keys(constants.SHADERS).length;
 	
-				var _loop = function _loop(k) {
-					console.log("Fetching vertex shader " + constants.SHADERS[k][0]);
-					fetch(constants.SHADERS[k][0]).then(function (response) {
-						return response.text();
-					}).then(function (responseText) {
-						console.log("Downloaded vertex shader " + constants.SHADERS[k][0]);
-						_this2.shaders[k] = [responseText];
-						console.log("Fetching fragment shader " + constants.SHADERS[k][1]);
-						fetch(constants.SHADERS[k][1]).then(function (response) {
+				var downloadedCount = 0;
+				var _iteratorNormalCompletion = true;
+				var _didIteratorError = false;
+				var _iteratorError = undefined;
+	
+				try {
+					var _loop = function _loop() {
+						var shader = _step.value;
+	
+						// what are we loading?
+						var m = shader.match(/^.*\/(.*)\.(vert|frag)$/);
+						var name = m[1];
+						var type = m[2] === 'vert' ? 0 : 1;
+						if (!_this2.shaders[name]) _this2.shaders[name] = ["", ""];
+	
+						console.log("Fetching " + shader);
+						fetch(shader).then(function (response) {
 							return response.text();
 						}).then(function (responseText) {
-							console.log("Downloaded fragment shader " + constants.SHADERS[k][0]);
-							_this2.shaders[k].push(responseText);
-							if (Object.keys(_this2.shaders).length === count) onSuccess();
+							console.log("Downloaded " + shader);
+							_this2.shaders[name][type] = responseText;
+							if (++downloadedCount === constants.SHADERS.length) {
+								console.log("All shaders downloaded: ", _this2.shaders);
+								onSuccess();
+							}
 						});
-					});
-				};
+					};
 	
-				for (var k in constants.SHADERS) {
-					_loop(k);
+					for (var _iterator = constants.SHADERS[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+						_loop();
+					}
+				} catch (err) {
+					_didIteratorError = true;
+					_iteratorError = err;
+				} finally {
+					try {
+						if (!_iteratorNormalCompletion && _iterator.return) {
+							_iterator.return();
+						}
+					} finally {
+						if (_didIteratorError) {
+							throw _iteratorError;
+						}
+					}
 				}
 			}
 		}, {
-			key: 'loadAssets',
-			value: function loadAssets(onSuccess) {
+			key: 'loadTextures',
+			value: function loadTextures(onSuccess) {
 				var _this3 = this;
 	
 				this.tex = {};
-				var count = Object.keys(constants.IMGS).length;
+				var count = Object.keys(constants.TEX).length;
 				var textureLoader = new _three2.default.TextureLoader();
 	
 				var _loop2 = function _loop2(k) {
-					var url = constants.IMGS[k];
+					var url = constants.TEX[k];
 					console.log("Loading: " + url);
 					textureLoader.load(url, function (texture) {
 						texture.wrapS = _three2.default.RepeatWrapping;
@@ -167,7 +194,7 @@
 					});
 				};
 	
-				for (var k in constants.IMGS) {
+				for (var k in constants.TEX) {
 					_loop2(k);
 				}
 			}
@@ -178,15 +205,11 @@
 				this.width = this.height * constants.ASPECT_RATIO;
 	
 				window.models = this.models = models;
-				//this.camera = new THREE.PerspectiveCamera( 45, constants.ASPECT_RATIO, 1, constants.FAR_DIST );
-				var orthoDiv = this.width / (1 * constants.REGION_SIZE * constants.SECTION_SIZE);
-				this.camera = new _three2.default.OrthographicCamera(this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, constants.FAR_DIST);
+				this.camera = new _three2.default.PerspectiveCamera(45, constants.ASPECT_RATIO, 1, constants.FAR_DIST);
+				//let orthoDiv = this.width / (1 * constants.REGION_SIZE * constants.SECTION_SIZE);
+				//this.camera = new THREE.OrthographicCamera( this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, constants.FAR_DIST );
 	
 				this.scene = new _three2.default.Scene();
-	
-				//this.camera.rotation.set( 0, 0, 0 );
-				this.camera.position.set(0, 0, 500);
-				this.camera.lookAt(new _three2.default.Vector3(0, 0, 0));
 	
 				this.renderer = new _three2.default.WebGLRenderer();
 	
@@ -210,6 +233,8 @@
 	
 				this.prevTime = 0;
 	
+				this.scene.add(new skybox.SkyBox().skyBox);
+	
 				(0, _jquery2.default)("body").append(this.renderer.domElement);
 				(0, _jquery2.default)("canvas").click(function (event) {
 					var element = event.target;
@@ -229,9 +254,13 @@
 				this.ambientLight.intensity = .1;
 				this.scene.add(this.ambientLight);
 	
-				this.dirLight1 = new _three2.default.DirectionalLight(constants.DIR1_COLOR.getHex(), 0.9);
+				this.dirLight1 = new _three2.default.DirectionalLight(0xffffbb, 1);
 				this.dirLight1.position.set(1, 1, 1);
 				this.scene.add(this.dirLight1);
+	
+				//this.dirLight1 = new THREE.DirectionalLight( constants.DIR1_COLOR.getHex(), 0.9 );
+				//this.dirLight1.position.set( 1, 1, 1 );
+				//this.scene.add( this.dirLight1 );
 	
 				this.dirLight2 = new _three2.default.DirectionalLight(constants.DIR2_COLOR.getHex(), 0.3);
 				this.dirLight2.position.set(1, -1, .8);
@@ -240,6 +269,14 @@
 				this.controller = new controller.Controller(this);
 				this.overmap = new overmap.OverMap(this);
 				this.regionEditor = new regioneditor.RegionEditor(this);
+	
+				//this.camera.rotation.set( 0, 0, 0 );
+				this.camera.position.set(100, 100, 100);
+				this.camera.lookAt(constants.ORIGIN);
+	
+				this.regionEditor.obj.rotation.set(-Math.PI / 2, 0, 0);
+				//this.obj.rotation.set(-Math.PI / 4, 0, Math.PI / 4);
+				//this.obj.position.z = -500;
 	
 				this.controller.start();
 	
@@ -256,6 +293,8 @@
 				var time = Date.now();
 				var delta = (time - this.prevTime) / 1000;
 				this.prevTime = time;
+	
+				this.regionEditor.update(time, delta);
 	
 				this.controller.update(delta);
 				this.renderer.render(this.scene, this.camera);
@@ -51631,7 +51670,7 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
-	exports.SHADERS = exports.IMGS = exports.REGION_COUNT = exports.VERTEX_SIZE = exports.SECTION_SIZE = exports.REGION_SIZE = exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
+	exports.SHADERS = exports.TEX = exports.ORIGIN = exports.REGION_COUNT = exports.VERTEX_SIZE = exports.SECTION_SIZE = exports.REGION_SIZE = exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
 	
 	var _three = __webpack_require__(1);
 	
@@ -51661,23 +51700,24 @@
 	var VERTEX_SIZE = exports.VERTEX_SIZE = REGION_SIZE * SECTION_SIZE;
 	var REGION_COUNT = exports.REGION_COUNT = WORLD_SIZE / REGION_SIZE;
 	
-	var IMGS = exports.IMGS = {
-		grass1: "/images/textures/seamless-pixels.blogspot.com/Grass 02 seamless.jpg",
-		clay1: "/images/textures/seamless-pixels.blogspot.com/Seamless clay cracks.jpg",
-		ground1: "/images/textures/seamless-pixels.blogspot.com/Seamless ground sand dirt crack texture.jpg",
-		ground2: "/images/textures/seamless-pixels.blogspot.com/Seamless ground sand texture (6).jpg",
-		classicGrass1: "/images/textures/seamless-pixels.blogspot.com/Tileable classic grass and dirt texture.jpg",
-		classicGrass2: "/images/textures/seamless-pixels.blogspot.com/Tileable classic patchy grass 2 texture.jpg",
-		classicGrass3: "/images/textures/seamless-pixels.blogspot.com/Tileable classic patchy grass texture.jpg",
-		water1: "/images/textures/seamless-pixels.blogspot.com/Tileable classic water texture.jpg",
-		road1: "/images/textures/texturelib.com/brick_pavement_0068_01_tiled_s.jpg",
-		road2: "/images/textures/texturelib.com/brick_pavement_0107_02_tiled_s.jpg",
-		road3: "/images/textures/texturelib.com/brick_stone_wall_0009_02_tiled_s.jpg"
+	var ORIGIN = exports.ORIGIN = new _three2.default.Vector3(0, 0, 0);
+	
+	var TEX = exports.TEX = {
+		grass1: "../images/textures/seamless-pixels.blogspot.com/Grass 02 seamless.jpg",
+		clay1: "../images/textures/seamless-pixels.blogspot.com/Seamless clay cracks.jpg",
+		ground1: "../images/textures/seamless-pixels.blogspot.com/Seamless ground sand dirt crack texture.jpg",
+		ground2: "../images/textures/seamless-pixels.blogspot.com/Seamless ground sand texture (6).jpg",
+		classicGrass1: "../images/textures/seamless-pixels.blogspot.com/Tileable classic grass and dirt texture.jpg",
+		classicGrass2: "../images/textures/seamless-pixels.blogspot.com/Tileable classic patchy grass 2 texture.jpg",
+		classicGrass3: "../images/textures/seamless-pixels.blogspot.com/Tileable classic patchy grass texture.jpg",
+		water1: "../images/textures/seamless-pixels.blogspot.com/Tileable classic water texture.jpg",
+		road1: "../images/textures/texturelib.com/brick_pavement_0068_01_tiled_s.jpg",
+		road2: "../images/textures/texturelib.com/brick_pavement_0107_02_tiled_s.jpg",
+		road3: "../images/textures/texturelib.com/brick_stone_wall_0009_02_tiled_s.jpg",
+		waterNormals: "../images/waternormals.jpg"
 	};
 	
-	var SHADERS = exports.SHADERS = {
-		map: ["/shaders/map.vert", "/shaders/map.frag"]
-	};
+	var SHADERS = exports.SHADERS = ["../shaders/map.vert", "../shaders/map.frag", "../shaders/water.vert", "../shaders/water.frag"];
 
 /***/ },
 /* 4 */
@@ -52358,6 +52398,10 @@
 			this.gravis = gravis;
 			this.fw = this.bw = this.left = this.right = false;
 			this.direction = new _three2.default.Vector3(0, 0, 0);
+			this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+			this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+	
+			this.theta = 0;
 	
 			(0, _jquery2.default)("#reject").click(function (event) {
 				_this.gravis.overmap.newMap();
@@ -52390,31 +52434,68 @@
 			});
 			(0, _jquery2.default)("canvas").mousemove(function (event) {
 				var mx = event.originalEvent.movementX;
-				var my = event.originalEvent.movementY;
-				_this.gravis.regionEditor.obj.rotation.z += mx * 0.01;
+				// let my = event.originalEvent.movementY;
+				_this.theta += mx * 0.01;
+				_this.gravis.camera.position.set(500 * Math.cos(_this.theta), 500, 500 * Math.sin(_this.theta));
+				_this.gravis.camera.lookAt(constants.ORIGIN);
 			});
 			(0, _jquery2.default)(document).keydown(function (event) {
-				switch (event.keyCode) {
-					case 87:
-						_this.fw = true;break;
-					case 83:
-						_this.bw = true;break;
-					case 65:
-						_this.left = true;break;
-					case 68:
-						_this.right = true;break;
+				if (!event.ctrlKey) {
+					switch (event.keyCode) {
+						case 87:
+							_this.fw = true;
+							break;
+						case 83:
+							_this.bw = true;
+							break;
+						case 65:
+							_this.left = true;
+							break;
+						case 68:
+							_this.right = true;
+							break;
+					}
 				}
 			});
 			(0, _jquery2.default)(document).keyup(function (event) {
-				switch (event.keyCode) {
-					case 87:
-						_this.fw = false;break;
-					case 83:
-						_this.bw = false;break;
-					case 65:
-						_this.left = false;break;
-					case 68:
-						_this.right = false;break;
+				if (event.ctrlKey) {
+					switch (event.keyCode) {
+						case 87:
+							_this.ry--;
+							_this.fw = _this.bw = _this.left = _this.right = false;
+							_this.gravis.regionEditor.edit(_this.rx, _this.ry);
+							break;
+						case 83:
+							_this.ry++;
+							_this.fw = _this.bw = _this.left = _this.right = false;
+							_this.gravis.regionEditor.edit(_this.rx, _this.ry);
+							break;
+						case 65:
+							_this.rx--;
+							_this.fw = _this.bw = _this.left = _this.right = false;
+							_this.gravis.regionEditor.edit(_this.rx, _this.ry);
+							break;
+						case 68:
+							_this.rx++;
+							_this.fw = _this.bw = _this.left = _this.right = false;
+							_this.gravis.regionEditor.edit(_this.rx, _this.ry);
+							break;
+					}
+				} else {
+					switch (event.keyCode) {
+						case 87:
+							_this.fw = false;
+							break;
+						case 83:
+							_this.bw = false;
+							break;
+						case 65:
+							_this.left = false;
+							break;
+						case 68:
+							_this.right = false;
+							break;
+					}
 				}
 			});
 		}
@@ -52443,9 +52524,7 @@
 			key: 'load',
 			value: function load() {
 				this.gravis.overmap.hide();
-				var rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-				var ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-				this.gravis.regionEditor.edit(rx, ry);
+				this.gravis.regionEditor.edit(this.rx, this.ry);
 				(0, _jquery2.default)("#overmap_buttons").hide();
 				(0, _jquery2.default)("#region_buttons").show();
 			}
@@ -55814,6 +55893,10 @@
 	
 	var _three2 = _interopRequireDefault(_three);
 	
+	var _WaterShader = __webpack_require__(23);
+	
+	var water = _interopRequireWildcard(_WaterShader);
+	
 	var _jquery = __webpack_require__(2);
 	
 	var _jquery2 = _interopRequireDefault(_jquery);
@@ -55830,11 +55913,11 @@
 	
 	var regionModel = _interopRequireWildcard(_region);
 	
-	var _section = __webpack_require__(23);
+	var _section = __webpack_require__(25);
 	
 	var sectionDef = _interopRequireWildcard(_section);
 	
-	var _view = __webpack_require__(24);
+	var _view = __webpack_require__(26);
 	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
@@ -55844,6 +55927,8 @@
 	
 	var WATER_Z = 1.5;
 	var WATER_COLOR = new _three2.default.Color(0.1, 0.3, 0.85);
+	var TIME_VEC = new _three2.default.Vector3(0, 0, 0);
+	var THE_CLOCK = new _three2.default.Clock();
 	
 	var REGION_OFFSETS = [];
 	if (REGION_OFFSETS.length == 0) {
@@ -55864,8 +55949,6 @@
 			this.baseObj = new _three2.default.Object3D();
 	
 			this.obj = new _three2.default.Object3D();
-			this.obj.rotation.set(-Math.PI / 4, 0, Math.PI / 4);
-			this.obj.position.z = -500;
 			this.baseObj.add(this.obj);
 	
 			//this.obj.scale.set(constants.EDITOR_SCALE, constants.EDITOR_SCALE, constants.EDITOR_SCALE);
@@ -55906,8 +55989,6 @@
 					var yp = v.y + constants.VERTEX_SIZE / 2;
 					this.vertexGrid[xp + "," + yp] = v;
 				}
-	
-				// custom attribute for how 'road' a vertex is
 			} catch (err) {
 				_didIteratorError = true;
 				_iteratorError = err;
@@ -55923,18 +56004,41 @@
 				}
 			}
 	
+			this.obj.add(this.mesh);
+	
+			// custom attribute for how 'road' a vertex is
 			this.road = new Float32Array(this.mesh.geometry.getAttribute("position").array.length);
 			this.mesh.geometry.addAttribute('road', new _three2.default.BufferAttribute(this.road, 1));
 	
-			this.water = new _three2.default.Mesh(new _three2.default.PlaneGeometry(this.size, this.size), new _three2.default.MeshBasicMaterial({ color: WATER_COLOR, opacity: 0.25, transparent: true }));
-			this.water.position.z = WATER_Z;
-			//this.waterDir = 1;
+			this.water = new _three2.default.Water(this.gravis.renderer, this.gravis.camera, this.gravis.scene, {
+				textureWidth: 512,
+				textureHeight: 512,
+				waterNormals: this.gravis.tex.waterNormals,
+				alpha: 0.5,
+				sunDirection: this.gravis.dirLight1.position.clone().normalize(),
+				// sunDirection: light.position.clone().normalize(),
+				sunColor: 0xffffff,
+				waterColor: 0x88eeff,
+				//waterColor: 0x001e0f,
+				distortionScale: 20.0
+			});
 	
-			this.obj.add(this.mesh);
-			this.obj.add(this.water);
+			this.mirrorMesh = new _three2.default.Mesh(new _three2.default.PlaneBufferGeometry(this.size, this.size), this.water.material);
+	
+			this.mirrorMesh.add(this.water);
+			this.mirrorMesh.position.z = WATER_Z;
+			this.obj.add(this.mirrorMesh);
 		}
 	
 		_createClass(RegionEditor, [{
+			key: 'update',
+			value: function update(time, delta) {
+				TIME_VEC.x += THE_CLOCK.getDelta();
+	
+				this.water.material.uniforms.time.value += 1.0 / 60.0;
+				this.water.render();
+			}
+		}, {
 			key: 'edit',
 			value: function edit(rx, ry) {
 				(0, _jquery2.default)("#rx").text(rx);
@@ -56002,6 +56106,492 @@
 
 	'use strict';
 	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _Mirror = __webpack_require__(24);
+	
+	var mirror = _interopRequireWildcard(_Mirror);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	/**
+	 * @author jbouny / https://github.com/jbouny
+	 *
+	 * Work based on :
+	 * @author Slayvin / http://slayvin.net : Flat mirror for three.js
+	 * @author Stemkoski / http://www.adelphi.edu/~stemkoski : An implementation of water shader based on the flat mirror
+	 * @author Jonas Wagner / http://29a.ch/ && http://29a.ch/slides/2012/webglwater/ : Water shader explanations in WebGL
+	 */
+	
+	_three2.default.ShaderLib['water'] = {
+	
+		uniforms: _three2.default.UniformsUtils.merge([_three2.default.UniformsLib["fog"], {
+			"normalSampler": { value: null },
+			"mirrorSampler": { value: null },
+			"alpha": { value: 1.0 },
+			"time": { value: 0.0 },
+			"distortionScale": { value: 20.0 },
+			"noiseScale": { value: 1.0 },
+			"textureMatrix": { value: new _three2.default.Matrix4() },
+			"sunColor": { value: new _three2.default.Color(0x7F7F7F) },
+			"sunDirection": { value: new _three2.default.Vector3(0.70707, 0.70707, 0) },
+			"eye": { value: new _three2.default.Vector3() },
+			"waterColor": { value: new _three2.default.Color(0x555555) }
+		}]),
+	
+		vertexShader: ['uniform mat4 textureMatrix;', 'uniform float time;', 'varying vec4 mirrorCoord;', 'varying vec3 worldPosition;', 'void main()', '{', '	mirrorCoord = modelMatrix * vec4( position, 1.0 );', '	worldPosition = mirrorCoord.xyz;', '	mirrorCoord = textureMatrix * mirrorCoord;', '	gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );', '}'].join('\n'),
+	
+		fragmentShader: ['precision highp float;', 'uniform sampler2D mirrorSampler;', 'uniform float alpha;', 'uniform float time;', 'uniform float distortionScale;', 'uniform sampler2D normalSampler;', 'uniform vec3 sunColor;', 'uniform vec3 sunDirection;', 'uniform vec3 eye;', 'uniform vec3 waterColor;', 'varying vec4 mirrorCoord;', 'varying vec3 worldPosition;', 'vec4 getNoise( vec2 uv )', '{', '	vec2 uv0 = ( uv / 103.0 ) + vec2(time / 17.0, time / 29.0);', '	vec2 uv1 = uv / 107.0-vec2( time / -19.0, time / 31.0 );', '	vec2 uv2 = uv / vec2( 8907.0, 9803.0 ) + vec2( time / 101.0, time / 97.0 );', '	vec2 uv3 = uv / vec2( 1091.0, 1027.0 ) - vec2( time / 109.0, time / -113.0 );', '	vec4 noise = texture2D( normalSampler, uv0 ) +', '		texture2D( normalSampler, uv1 ) +', '		texture2D( normalSampler, uv2 ) +', '		texture2D( normalSampler, uv3 );', '	return noise * 0.5 - 1.0;', '}', 'void sunLight( const vec3 surfaceNormal, const vec3 eyeDirection, float shiny, float spec, float diffuse, inout vec3 diffuseColor, inout vec3 specularColor )', '{', '	vec3 reflection = normalize( reflect( -sunDirection, surfaceNormal ) );', '	float direction = max( 0.0, dot( eyeDirection, reflection ) );', '	specularColor += pow( direction, shiny ) * sunColor * spec;', '	diffuseColor += max( dot( sunDirection, surfaceNormal ), 0.0 ) * sunColor * diffuse;', '}', _three2.default.ShaderChunk["common"], _three2.default.ShaderChunk["fog_pars_fragment"], 'void main()', '{', '	vec4 noise = getNoise( worldPosition.xz );', '	vec3 surfaceNormal = normalize( noise.xzy * vec3( 1.5, 1.0, 1.5 ) );', '	vec3 diffuseLight = vec3(0.0);', '	vec3 specularLight = vec3(0.0);', '	vec3 worldToEye = eye-worldPosition;', '	vec3 eyeDirection = normalize( worldToEye );', '	sunLight( surfaceNormal, eyeDirection, 100.0, 2.0, 0.5, diffuseLight, specularLight );', '	float distance = length(worldToEye);', '	vec2 distortion = surfaceNormal.xz * ( 0.001 + 1.0 / distance ) * distortionScale;', '	vec3 reflectionSample = vec3( texture2D( mirrorSampler, mirrorCoord.xy / mirrorCoord.z + distortion ) );', '	float theta = max( dot( eyeDirection, surfaceNormal ), 0.0 );', '	float rf0 = 0.3;', '	float reflectance = rf0 + ( 1.0 - rf0 ) * pow( ( 1.0 - theta ), 5.0 );', '	vec3 scatter = max( 0.0, dot( surfaceNormal, eyeDirection ) ) * waterColor;', '	vec3 albedo = mix( sunColor * diffuseLight * 0.3 + scatter, ( vec3( 0.1 ) + reflectionSample * 0.9 + reflectionSample * specularLight ), reflectance );', '	vec3 outgoingLight = albedo;', _three2.default.ShaderChunk["fog_fragment"], '	gl_FragColor = vec4( outgoingLight, alpha );', '}'].join('\n')
+	
+	};
+	
+	_three2.default.Water = function (renderer, camera, scene, options) {
+	
+		_three2.default.Object3D.call(this);
+		this.name = 'water_' + this.id;
+	
+		function optionalParameter(value, defaultValue) {
+	
+			return value !== undefined ? value : defaultValue;
+		}
+	
+		options = options || {};
+	
+		this.matrixNeedsUpdate = true;
+	
+		var width = optionalParameter(options.textureWidth, 512);
+		var height = optionalParameter(options.textureHeight, 512);
+		this.clipBias = optionalParameter(options.clipBias, 0.0);
+		this.alpha = optionalParameter(options.alpha, 1.0);
+		this.time = optionalParameter(options.time, 0.0);
+		this.normalSampler = optionalParameter(options.waterNormals, null);
+		this.sunDirection = optionalParameter(options.sunDirection, new _three2.default.Vector3(0.70707, 0.70707, 0.0));
+		this.sunColor = new _three2.default.Color(optionalParameter(options.sunColor, 0xffffff));
+		this.waterColor = new _three2.default.Color(optionalParameter(options.waterColor, 0x7F7F7F));
+		this.eye = optionalParameter(options.eye, new _three2.default.Vector3(0, 0, 0));
+		this.distortionScale = optionalParameter(options.distortionScale, 20.0);
+		this.side = optionalParameter(options.side, _three2.default.FrontSide);
+		this.fog = optionalParameter(options.fog, false);
+	
+		this.renderer = renderer;
+		this.scene = scene;
+		this.mirrorPlane = new _three2.default.Plane();
+		this.normal = new _three2.default.Vector3(0, 0, 1);
+		this.mirrorWorldPosition = new _three2.default.Vector3();
+		this.cameraWorldPosition = new _three2.default.Vector3();
+		this.rotationMatrix = new _three2.default.Matrix4();
+		this.lookAtPosition = new _three2.default.Vector3(0, 0, -1);
+		this.clipPlane = new _three2.default.Vector4();
+	
+		if (camera instanceof _three2.default.PerspectiveCamera) {
+	
+			this.camera = camera;
+		} else {
+	
+			this.camera = new _three2.default.PerspectiveCamera();
+			console.log(this.name + ': camera is not a Perspective Camera!');
+		}
+	
+		this.textureMatrix = new _three2.default.Matrix4();
+	
+		this.mirrorCamera = this.camera.clone();
+	
+		this.renderTarget = new _three2.default.WebGLRenderTarget(width, height);
+		this.renderTarget2 = new _three2.default.WebGLRenderTarget(width, height);
+	
+		var mirrorShader = _three2.default.ShaderLib["water"];
+		var mirrorUniforms = _three2.default.UniformsUtils.clone(mirrorShader.uniforms);
+	
+		this.material = new _three2.default.ShaderMaterial({
+			fragmentShader: mirrorShader.fragmentShader,
+			vertexShader: mirrorShader.vertexShader,
+			uniforms: mirrorUniforms,
+			transparent: true,
+			side: this.side,
+			fog: this.fog
+		});
+	
+		this.material.uniforms.mirrorSampler.value = this.renderTarget.texture;
+		this.material.uniforms.textureMatrix.value = this.textureMatrix;
+		this.material.uniforms.alpha.value = this.alpha;
+		this.material.uniforms.time.value = this.time;
+		this.material.uniforms.normalSampler.value = this.normalSampler;
+		this.material.uniforms.sunColor.value = this.sunColor;
+		this.material.uniforms.waterColor.value = this.waterColor;
+		this.material.uniforms.sunDirection.value = this.sunDirection;
+		this.material.uniforms.distortionScale.value = this.distortionScale;
+	
+		this.material.uniforms.eye.value = this.eye;
+	
+		if (!_three2.default.Math.isPowerOfTwo(width) || !_three2.default.Math.isPowerOfTwo(height)) {
+	
+			this.renderTarget.texture.generateMipmaps = false;
+			this.renderTarget.texture.minFilter = _three2.default.LinearFilter;
+			this.renderTarget2.texture.generateMipmaps = false;
+			this.renderTarget2.texture.minFilter = _three2.default.LinearFilter;
+		}
+	
+		this.updateTextureMatrix();
+		this.render();
+	};
+	
+	_three2.default.Water.prototype = Object.create(_three2.default.Mirror.prototype);
+	_three2.default.Water.prototype.constructor = _three2.default.Water;
+	
+	_three2.default.Water.prototype.updateTextureMatrix = function () {
+	
+		function sign(x) {
+	
+			return x ? x < 0 ? -1 : 1 : 0;
+		}
+	
+		this.updateMatrixWorld();
+		this.camera.updateMatrixWorld();
+	
+		this.mirrorWorldPosition.setFromMatrixPosition(this.matrixWorld);
+		this.cameraWorldPosition.setFromMatrixPosition(this.camera.matrixWorld);
+	
+		this.rotationMatrix.extractRotation(this.matrixWorld);
+	
+		this.normal.set(0, 0, 1);
+		this.normal.applyMatrix4(this.rotationMatrix);
+	
+		var view = this.mirrorWorldPosition.clone().sub(this.cameraWorldPosition);
+		view.reflect(this.normal).negate();
+		view.add(this.mirrorWorldPosition);
+	
+		this.rotationMatrix.extractRotation(this.camera.matrixWorld);
+	
+		this.lookAtPosition.set(0, 0, -1);
+		this.lookAtPosition.applyMatrix4(this.rotationMatrix);
+		this.lookAtPosition.add(this.cameraWorldPosition);
+	
+		var target = this.mirrorWorldPosition.clone().sub(this.lookAtPosition);
+		target.reflect(this.normal).negate();
+		target.add(this.mirrorWorldPosition);
+	
+		this.up.set(0, -1, 0);
+		this.up.applyMatrix4(this.rotationMatrix);
+		this.up.reflect(this.normal).negate();
+	
+		this.mirrorCamera.position.copy(view);
+		this.mirrorCamera.up = this.up;
+		this.mirrorCamera.lookAt(target);
+		this.mirrorCamera.aspect = this.camera.aspect;
+	
+		this.mirrorCamera.updateProjectionMatrix();
+		this.mirrorCamera.updateMatrixWorld();
+		this.mirrorCamera.matrixWorldInverse.getInverse(this.mirrorCamera.matrixWorld);
+	
+		// Update the texture matrix
+		this.textureMatrix.set(0.5, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0);
+		this.textureMatrix.multiply(this.mirrorCamera.projectionMatrix);
+		this.textureMatrix.multiply(this.mirrorCamera.matrixWorldInverse);
+	
+		// Now update projection matrix with new clip plane, implementing code from: http://www.terathon.com/code/oblique.html
+		// Paper explaining this technique: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
+		this.mirrorPlane.setFromNormalAndCoplanarPoint(this.normal, this.mirrorWorldPosition);
+		this.mirrorPlane.applyMatrix4(this.mirrorCamera.matrixWorldInverse);
+	
+		this.clipPlane.set(this.mirrorPlane.normal.x, this.mirrorPlane.normal.y, this.mirrorPlane.normal.z, this.mirrorPlane.constant);
+	
+		var q = new _three2.default.Vector4();
+		var projectionMatrix = this.mirrorCamera.projectionMatrix;
+	
+		q.x = (sign(this.clipPlane.x) + projectionMatrix.elements[8]) / projectionMatrix.elements[0];
+		q.y = (sign(this.clipPlane.y) + projectionMatrix.elements[9]) / projectionMatrix.elements[5];
+		q.z = -1.0;
+		q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14];
+	
+		// Calculate the scaled plane vector
+		var c = new _three2.default.Vector4();
+		c = this.clipPlane.multiplyScalar(2.0 / this.clipPlane.dot(q));
+	
+		// Replacing the third row of the projection matrix
+		projectionMatrix.elements[2] = c.x;
+		projectionMatrix.elements[6] = c.y;
+		projectionMatrix.elements[10] = c.z + 1.0 - this.clipBias;
+		projectionMatrix.elements[14] = c.w;
+	
+		var worldCoordinates = new _three2.default.Vector3();
+		worldCoordinates.setFromMatrixPosition(this.camera.matrixWorld);
+		this.eye = worldCoordinates;
+		this.material.uniforms.eye.value = this.eye;
+	};
+
+/***/ },
+/* 24 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	/**
+	 * @author Slayvin / http://slayvin.net
+	 */
+	
+	_three2.default.ShaderLib['mirror'] = {
+	
+		uniforms: {
+			"mirrorColor": { value: new _three2.default.Color(0x7F7F7F) },
+			"mirrorSampler": { value: null },
+			"textureMatrix": { value: new _three2.default.Matrix4() }
+		},
+	
+		vertexShader: ["uniform mat4 textureMatrix;", "varying vec4 mirrorCoord;", "void main() {", "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );", "vec4 worldPosition = modelMatrix * vec4( position, 1.0 );", "mirrorCoord = textureMatrix * worldPosition;", "gl_Position = projectionMatrix * mvPosition;", "}"].join("\n"),
+	
+		fragmentShader: ["uniform vec3 mirrorColor;", "uniform sampler2D mirrorSampler;", "varying vec4 mirrorCoord;", "float blendOverlay(float base, float blend) {", "return( base < 0.5 ? ( 2.0 * base * blend ) : (1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) );", "}", "void main() {", "vec4 color = texture2DProj(mirrorSampler, mirrorCoord);", "color = vec4(blendOverlay(mirrorColor.r, color.r), blendOverlay(mirrorColor.g, color.g), blendOverlay(mirrorColor.b, color.b), 1.0);", "gl_FragColor = color;", "}"].join("\n")
+	
+	};
+	
+	_three2.default.Mirror = function (renderer, camera, options) {
+	
+		_three2.default.Object3D.call(this);
+	
+		this.name = 'mirror_' + this.id;
+	
+		options = options || {};
+	
+		this.matrixNeedsUpdate = true;
+	
+		var width = options.textureWidth !== undefined ? options.textureWidth : 512;
+		var height = options.textureHeight !== undefined ? options.textureHeight : 512;
+	
+		this.clipBias = options.clipBias !== undefined ? options.clipBias : 0.0;
+	
+		var mirrorColor = options.color !== undefined ? new _three2.default.Color(options.color) : new _three2.default.Color(0x7F7F7F);
+	
+		this.renderer = renderer;
+		this.mirrorPlane = new _three2.default.Plane();
+		this.normal = new _three2.default.Vector3(0, 0, 1);
+		this.mirrorWorldPosition = new _three2.default.Vector3();
+		this.cameraWorldPosition = new _three2.default.Vector3();
+		this.rotationMatrix = new _three2.default.Matrix4();
+		this.lookAtPosition = new _three2.default.Vector3(0, 0, -1);
+		this.clipPlane = new _three2.default.Vector4();
+	
+		// For debug only, show the normal and plane of the mirror
+		var debugMode = options.debugMode !== undefined ? options.debugMode : false;
+	
+		if (debugMode) {
+	
+			var arrow = new _three2.default.ArrowHelper(new _three2.default.Vector3(0, 0, 1), new _three2.default.Vector3(0, 0, 0), 10, 0xffff80);
+			var planeGeometry = new _three2.default.Geometry();
+			planeGeometry.vertices.push(new _three2.default.Vector3(-10, -10, 0));
+			planeGeometry.vertices.push(new _three2.default.Vector3(10, -10, 0));
+			planeGeometry.vertices.push(new _three2.default.Vector3(10, 10, 0));
+			planeGeometry.vertices.push(new _three2.default.Vector3(-10, 10, 0));
+			planeGeometry.vertices.push(planeGeometry.vertices[0]);
+			var plane = new _three2.default.Line(planeGeometry, new _three2.default.LineBasicMaterial({ color: 0xffff80 }));
+	
+			this.add(arrow);
+			this.add(plane);
+		}
+	
+		if (camera instanceof _three2.default.PerspectiveCamera) {
+	
+			this.camera = camera;
+		} else {
+	
+			this.camera = new _three2.default.PerspectiveCamera();
+			console.log(this.name + ': camera is not a Perspective Camera!');
+		}
+	
+		this.textureMatrix = new _three2.default.Matrix4();
+	
+		this.mirrorCamera = this.camera.clone();
+		this.mirrorCamera.matrixAutoUpdate = true;
+	
+		var parameters = { minFilter: _three2.default.LinearFilter, magFilter: _three2.default.LinearFilter, format: _three2.default.RGBFormat, stencilBuffer: false };
+	
+		this.renderTarget = new _three2.default.WebGLRenderTarget(width, height, parameters);
+		this.renderTarget2 = new _three2.default.WebGLRenderTarget(width, height, parameters);
+	
+		var mirrorShader = _three2.default.ShaderLib["mirror"];
+		var mirrorUniforms = _three2.default.UniformsUtils.clone(mirrorShader.uniforms);
+	
+		this.material = new _three2.default.ShaderMaterial({
+	
+			fragmentShader: mirrorShader.fragmentShader,
+			vertexShader: mirrorShader.vertexShader,
+			uniforms: mirrorUniforms
+	
+		});
+	
+		this.material.uniforms.mirrorSampler.value = this.renderTarget.texture;
+		this.material.uniforms.mirrorColor.value = mirrorColor;
+		this.material.uniforms.textureMatrix.value = this.textureMatrix;
+	
+		if (!_three2.default.Math.isPowerOfTwo(width) || !_three2.default.Math.isPowerOfTwo(height)) {
+	
+			this.renderTarget.texture.generateMipmaps = false;
+			this.renderTarget2.texture.generateMipmaps = false;
+		}
+	
+		this.updateTextureMatrix();
+		this.render();
+	};
+	
+	_three2.default.Mirror.prototype = Object.create(_three2.default.Object3D.prototype);
+	_three2.default.Mirror.prototype.constructor = _three2.default.Mirror;
+	
+	_three2.default.Mirror.prototype.renderWithMirror = function (otherMirror) {
+	
+		// update the mirror matrix to mirror the current view
+		this.updateTextureMatrix();
+		this.matrixNeedsUpdate = false;
+	
+		// set the camera of the other mirror so the mirrored view is the reference view
+		var tempCamera = otherMirror.camera;
+		otherMirror.camera = this.mirrorCamera;
+	
+		// render the other mirror in temp texture
+		otherMirror.renderTemp();
+		otherMirror.material.uniforms.mirrorSampler.value = otherMirror.renderTarget2.texture;
+	
+		// render the current mirror
+		this.render();
+		this.matrixNeedsUpdate = true;
+	
+		// restore material and camera of other mirror
+		otherMirror.material.uniforms.mirrorSampler.value = otherMirror.renderTarget.texture;
+		otherMirror.camera = tempCamera;
+	
+		// restore texture matrix of other mirror
+		otherMirror.updateTextureMatrix();
+	};
+	
+	_three2.default.Mirror.prototype.updateTextureMatrix = function () {
+	
+		this.updateMatrixWorld();
+		this.camera.updateMatrixWorld();
+	
+		this.mirrorWorldPosition.setFromMatrixPosition(this.matrixWorld);
+		this.cameraWorldPosition.setFromMatrixPosition(this.camera.matrixWorld);
+	
+		this.rotationMatrix.extractRotation(this.matrixWorld);
+	
+		this.normal.set(0, 0, 1);
+		this.normal.applyMatrix4(this.rotationMatrix);
+	
+		var view = this.mirrorWorldPosition.clone().sub(this.cameraWorldPosition);
+		view.reflect(this.normal).negate();
+		view.add(this.mirrorWorldPosition);
+	
+		this.rotationMatrix.extractRotation(this.camera.matrixWorld);
+	
+		this.lookAtPosition.set(0, 0, -1);
+		this.lookAtPosition.applyMatrix4(this.rotationMatrix);
+		this.lookAtPosition.add(this.cameraWorldPosition);
+	
+		var target = this.mirrorWorldPosition.clone().sub(this.lookAtPosition);
+		target.reflect(this.normal).negate();
+		target.add(this.mirrorWorldPosition);
+	
+		this.up.set(0, -1, 0);
+		this.up.applyMatrix4(this.rotationMatrix);
+		this.up.reflect(this.normal).negate();
+	
+		this.mirrorCamera.position.copy(view);
+		this.mirrorCamera.up = this.up;
+		this.mirrorCamera.lookAt(target);
+	
+		this.mirrorCamera.updateProjectionMatrix();
+		this.mirrorCamera.updateMatrixWorld();
+		this.mirrorCamera.matrixWorldInverse.getInverse(this.mirrorCamera.matrixWorld);
+	
+		// Update the texture matrix
+		this.textureMatrix.set(0.5, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 1.0);
+		this.textureMatrix.multiply(this.mirrorCamera.projectionMatrix);
+		this.textureMatrix.multiply(this.mirrorCamera.matrixWorldInverse);
+	
+		// Now update projection matrix with new clip plane, implementing code from: http://www.terathon.com/code/oblique.html
+		// Paper explaining this technique: http://www.terathon.com/lengyel/Lengyel-Oblique.pdf
+		this.mirrorPlane.setFromNormalAndCoplanarPoint(this.normal, this.mirrorWorldPosition);
+		this.mirrorPlane.applyMatrix4(this.mirrorCamera.matrixWorldInverse);
+	
+		this.clipPlane.set(this.mirrorPlane.normal.x, this.mirrorPlane.normal.y, this.mirrorPlane.normal.z, this.mirrorPlane.constant);
+	
+		var q = new _three2.default.Vector4();
+		var projectionMatrix = this.mirrorCamera.projectionMatrix;
+	
+		q.x = (Math.sign(this.clipPlane.x) + projectionMatrix.elements[8]) / projectionMatrix.elements[0];
+		q.y = (Math.sign(this.clipPlane.y) + projectionMatrix.elements[9]) / projectionMatrix.elements[5];
+		q.z = -1.0;
+		q.w = (1.0 + projectionMatrix.elements[10]) / projectionMatrix.elements[14];
+	
+		// Calculate the scaled plane vector
+		var c = new _three2.default.Vector4();
+		c = this.clipPlane.multiplyScalar(2.0 / this.clipPlane.dot(q));
+	
+		// Replacing the third row of the projection matrix
+		projectionMatrix.elements[2] = c.x;
+		projectionMatrix.elements[6] = c.y;
+		projectionMatrix.elements[10] = c.z + 1.0 - this.clipBias;
+		projectionMatrix.elements[14] = c.w;
+	};
+	
+	_three2.default.Mirror.prototype.render = function () {
+	
+		if (this.matrixNeedsUpdate) this.updateTextureMatrix();
+	
+		this.matrixNeedsUpdate = true;
+	
+		// Render the mirrored view of the current scene into the target texture
+		var scene = this;
+	
+		while (scene.parent !== null) {
+	
+			scene = scene.parent;
+		}
+	
+		if (scene !== undefined && scene instanceof _three2.default.Scene) {
+	
+			// We can't render ourself to ourself
+			var visible = this.material.visible;
+			this.material.visible = false;
+	
+			this.renderer.render(scene, this.mirrorCamera, this.renderTarget, true);
+	
+			this.material.visible = visible;
+		}
+	};
+	
+	_three2.default.Mirror.prototype.renderTemp = function () {
+	
+		if (this.matrixNeedsUpdate) this.updateTextureMatrix();
+	
+		this.matrixNeedsUpdate = true;
+	
+		// Render the mirrored view of the current scene into the target texture
+		var scene = this;
+	
+		while (scene.parent !== null) {
+	
+			scene = scene.parent;
+		}
+	
+		if (scene !== undefined && scene instanceof _three2.default.Scene) {
+	
+			this.renderer.render(scene, this.mirrorCamera, this.renderTarget2, true);
+		}
+	};
+
+/***/ },
+/* 25 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
@@ -56039,7 +56629,7 @@
 	});
 
 /***/ },
-/* 24 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -56063,7 +56653,7 @@
 	
 	var util = _interopRequireWildcard(_util);
 	
-	var _section = __webpack_require__(23);
+	var _section = __webpack_require__(25);
 	
 	var sectionDef = _interopRequireWildcard(_section);
 	
@@ -56234,6 +56824,72 @@
 
 		return View;
 	}();
+
+/***/ },
+/* 27 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.SkyBox = undefined;
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var SkyBox = exports.SkyBox = function SkyBox() {
+		_classCallCheck(this, SkyBox);
+	
+		// load skybox
+		var cubeMap = new _three2.default.CubeTexture([]);
+		cubeMap.format = _three2.default.RGBFormat;
+	
+		var loader = new _three2.default.ImageLoader();
+		loader.load('../images/skyboxsun25degtest.png', function (image) {
+	
+			var getSide = function getSide(x, y) {
+	
+				var size = 1024;
+	
+				var canvas = document.createElement('canvas');
+				canvas.width = size;
+				canvas.height = size;
+	
+				var context = canvas.getContext('2d');
+				context.drawImage(image, -x * size, -y * size);
+	
+				return canvas;
+			};
+	
+			cubeMap.images[0] = getSide(2, 1); // px
+			cubeMap.images[1] = getSide(0, 1); // nx
+			cubeMap.images[2] = getSide(1, 0); // py
+			cubeMap.images[3] = getSide(1, 2); // ny
+			cubeMap.images[4] = getSide(1, 1); // pz
+			cubeMap.images[5] = getSide(3, 1); // nz
+			cubeMap.needsUpdate = true;
+		});
+	
+		var cubeShader = _three2.default.ShaderLib['cube'];
+		cubeShader.uniforms['tCube'].value = cubeMap;
+	
+		var skyBoxMaterial = new _three2.default.ShaderMaterial({
+			fragmentShader: cubeShader.fragmentShader,
+			vertexShader: cubeShader.vertexShader,
+			uniforms: cubeShader.uniforms,
+			depthWrite: false,
+			side: _three2.default.BackSide
+		});
+	
+		this.skyBox = new _three2.default.Mesh(new _three2.default.BoxGeometry(90000, 90000, 90000), skyBoxMaterial);
+	};
 
 /***/ }
 /******/ ]);

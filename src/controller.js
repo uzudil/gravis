@@ -10,6 +10,10 @@ export class Controller {
 		this.gravis = gravis;
 		this.fw = this.bw = this.left = this.right = false;
 		this.direction = new THREE.Vector3(0, 0, 0);
+		this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+		this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+
+		this.theta = 0;
 
 		$("#reject").click((event) => {
 			this.gravis.overmap.newMap();
@@ -43,23 +47,68 @@ export class Controller {
 		});
 		$("canvas").mousemove((event) => {
 			let mx = event.originalEvent.movementX;
-			let my = event.originalEvent.movementY;
-			this.gravis.regionEditor.obj.rotation.z += mx * 0.01;
+			// let my = event.originalEvent.movementY;
+			this.theta += mx * 0.01;
+			this.gravis.camera.position.set(500 * Math.cos(this.theta), 500, 500 * Math.sin(this.theta));
+			this.gravis.camera.lookAt(constants.ORIGIN);
 		});
 		$(document).keydown(( event ) => {
-			switch ( event.keyCode ) {
-				case 87: this.fw = true; break;
-				case 83: this.bw = true; break;
-				case 65: this.left = true; break;
-				case 68: this.right = true; break;
+			if(!event.ctrlKey) {
+				switch (event.keyCode) {
+					case 87:
+						this.fw = true;
+						break;
+					case 83:
+						this.bw = true;
+						break;
+					case 65:
+						this.left = true;
+						break;
+					case 68:
+						this.right = true;
+						break;
+				}
 			}
 		});
 		$(document).keyup(( event ) => {
-			switch ( event.keyCode ) {
-				case 87: this.fw = false; break;
-				case 83: this.bw = false; break;
-				case 65: this.left = false; break;
-				case 68: this.right = false; break;
+			if(event.ctrlKey) {
+				switch (event.keyCode) {
+					case 87:
+						this.ry--;
+						this.fw = this.bw = this.left = this.right = false;
+						this.gravis.regionEditor.edit(this.rx, this.ry);
+						break;
+					case 83:
+						this.ry++;
+						this.fw = this.bw = this.left = this.right = false;
+						this.gravis.regionEditor.edit(this.rx, this.ry);
+						break;
+					case 65:
+						this.rx--;
+						this.fw = this.bw = this.left = this.right = false;
+						this.gravis.regionEditor.edit(this.rx, this.ry);
+						break;
+					case 68:
+						this.rx++;
+						this.fw = this.bw = this.left = this.right = false;
+						this.gravis.regionEditor.edit(this.rx, this.ry);
+						break;
+				}
+			} else {
+				switch (event.keyCode) {
+					case 87:
+						this.fw = false;
+						break;
+					case 83:
+						this.bw = false;
+						break;
+					case 65:
+						this.left = false;
+						break;
+					case 68:
+						this.right = false;
+						break;
+				}
 			}
 		});
 	}
@@ -78,9 +127,7 @@ export class Controller {
 
 	load() {
 		this.gravis.overmap.hide();
-		let rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-		let ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-		this.gravis.regionEditor.edit(rx, ry);
+		this.gravis.regionEditor.edit(this.rx, this.ry);
 		$("#overmap_buttons").hide();
 		$("#region_buttons").show();
 	}
