@@ -112,49 +112,8 @@ export class RegionEditor {
 		$("#rx").text(rx);
 		$("#ry").text(ry);
 		console.log("Building map...");
-		this.loadOrGenerate(rx, ry);
-	}
-
-	loadOrGenerate(rx, ry) {
-		console.log("Trying to load expanded region " + rx + "," + ry);
-		let name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json?cb=" + window.cb;
-		$.ajax({
-			type: 'GET',
-			dataType: 'json',
-			url: name + "?cb=" + window.cb,
-			success: (region) => {
-				console.log("Loaded region:", region);
-				this.displayExpandedRegion(region);
-			},
-			error: (err) => {
-				console.log("Error downloading expanded region: " + name + " error=" + err);
-				console.log("Will generate region instead...");
-				this.loadRegion(rx, ry);
-			}
-		});
-	}
-
-	displayExpandedRegion(region) {
-		let i = 0;
-		let x = 0;
-		let y = 0;
-		let p = {};
-		while(i < region.region.length) {
-			p.z = region.region[i++];
-			p.type = region.region[i++];
-			p.road = region.region[i++];
-			p.beach = region.region[i++];
-			p.secondTexture = region.region[i++];
-
-			this.copyToVertex(x, y, p);
-
-			x++;
-			if(x >= constants.VERTEX_SIZE) {
-				x = 0;
-				y++;
-			}
-		}
-		this.initAttributes();
+		this.view.reset();
+		this.loadRegion(rx, ry);
 	}
 
 	loadRegion(rx, ry, index=0) {
@@ -162,7 +121,12 @@ export class RegionEditor {
 			// load regions into the view
 			let [dx, dy] = REGION_OFFSETS[index];
 			if (rx + dx >= 0 && ry + dy >= 0 && rx + dx < constants.REGION_COUNT && ry + dy < constants.REGION_COUNT) {
-				regionModel.Region.load(rx + dx, ry + dy, (region) => {
+				this.loadExpandedOrRegularRegion(rx + dx, ry + dy, (expandedRegion) => {
+					console.log("COPYing region " + (rx + dx) + "," + (ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
+					this.view.copy(expandedRegion, dx + 1, dy + 1);
+					this.loadRegion(rx, ry, index + 1);
+				}, (region) => {
+					console.log("MAKEing region " + (rx + dx) + "," + (ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
 					this.view.display(region, dx + 1, dy + 1);
 					this.loadRegion(rx, ry, index + 1);
 				});
@@ -176,6 +140,23 @@ export class RegionEditor {
 			});
 			this.initAttributes();
 		}
+	}
+
+	loadExpandedOrRegularRegion(rx, ry, onSuccess, onFailure) {
+		let name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json";
+		$.ajax({
+			type: 'GET',
+			dataType: 'json',
+			url: name + "?cb=" + window.cb,
+			success: (expandedRegion) => {
+				onSuccess(expandedRegion);
+			},
+			error: (err) => {
+				regionModel.Region.load(rx, ry, (region) => {
+					onFailure(region);
+				});
+			}
+		});
 	}
 
 	copyToVertex(vx, vy, point) {

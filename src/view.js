@@ -10,6 +10,7 @@ const DEFAULT_POINT = {z: 0, type: 0, road: 0, secondTexture: 0, beach: 0};
  */
 export class View {
 	constructor() {
+		this.copied = {};
 		this.z = [];
 
 		// init height map
@@ -20,6 +21,10 @@ export class View {
 				a.push(this.defaultPoint());
 			}
 		}
+	}
+
+	reset() {
+		this.copied = {};
 	}
 
 	compressFloat (f) {
@@ -59,6 +64,28 @@ export class View {
 			dataType: "text/json"
 		});
 		console.log("Stored on server.");
+	}
+
+	copy(expandedRegion, rx, ry) {
+		let i = 0;
+		let x = 0;
+		let y = 0;
+		while(i < expandedRegion.region.length) {
+			let p = this.z[rx * constants.VERTEX_SIZE + x][ry * constants.VERTEX_SIZE + y];
+
+			p.z = expandedRegion.region[i++];
+			p.type = expandedRegion.region[i++];
+			p.road = expandedRegion.region[i++];
+			p.beach = expandedRegion.region[i++];
+			p.secondTexture = expandedRegion.region[i++];
+
+			y++;
+			if(y >= constants.VERTEX_SIZE) {
+				y = 0;
+				x++;
+			}
+		}
+		this.copied[rx + "," + ry] = 1;
 	}
 
 	display(region, rx, ry) {
@@ -148,9 +175,7 @@ export class View {
 	makeSubSection(x, y, sectionType, dx, dy) {
 		for(let xx = 0; xx < constants.SECTION_SIZE/2; xx++) {
 			for(let yy = 0; yy < constants.SECTION_SIZE/2; yy++) {
-				let point = this.z[x + xx + dx][y + yy + dy];
-				point.z = this.calcZ(sectionType);
-				//point.type = sectionType;
+				this.setAttribValue(x + xx + dx, y + yy + dy, 'z', this.calcZ(sectionType));
 			}
 		}
 	}
@@ -212,9 +237,13 @@ export class View {
 			}
 		}
 		let h = a.reduce((p, v) => p + v, 0) / a.length;
-		//let r = h / maxValue;
-		//this.z[x][y][attrib] = h + Math.random() * r - r/2;
-		this.z[x][y][attrib] = setValue(h);
+		this.setAttribValue(x, y, attrib, setValue(h));
 	}
 
+	// don't touch values that were copied in
+	setAttribValue(x, y, attrib, value) {
+		let rx = (x / constants.VERTEX_SIZE)|0;
+		let ry = (y / constants.VERTEX_SIZE)|0;
+		if(!this.copied[rx + "," + ry]) this.z[x][y][attrib] = value;
+	}
 }

@@ -10,10 +10,8 @@ export class Controller {
 		this.gravis = gravis;
 		this.fw = this.bw = this.left = this.right = false;
 		this.direction = new THREE.Vector3(0, 0, 0);
-		//this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-		//this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-		this.rx = 9;
-		this.ry = 3;
+		this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+		this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
 
 		this.theta = 0;
 

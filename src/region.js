@@ -33,18 +33,15 @@ export class Region {
 	}
 
 	static load(rx, ry, onSuccess, onError=null) {
-		console.log("Loading region " + rx + "," + ry);
 		let name = "/models/regions/region" + rx.toString(16) + ry.toString(16) + ".json?cb=" + window.cb;
 		$.ajax({
 			type: 'GET',
 			dataType: 'json',
 			url: name + "?cb=" + window.cb,
 			success: (region) => {
-				console.log("Loaded region:", region);
 				return onSuccess(new Region(rx, ry, region.region));
 			},
 			error: (err) => {
-				console.log("Error downloading region: " + name + " error=" + err);
 				if(onError) onError();
 			}
 		});

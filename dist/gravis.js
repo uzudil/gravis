@@ -52399,10 +52399,8 @@
 			this.gravis = gravis;
 			this.fw = this.bw = this.left = this.right = false;
 			this.direction = new _three2.default.Vector3(0, 0, 0);
-			//this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-			//this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
-			this.rx = 9;
-			this.ry = 3;
+			this.rx = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
+			this.ry = Math.floor(constants.WORLD_SIZE / constants.REGION_SIZE / 2);
 	
 			this.theta = 0;
 	
@@ -52461,6 +52459,7 @@
 				}
 			});
 			(0, _jquery2.default)(document).keyup(function (event) {
+				console.log(event.keyCode);
 				if (event.ctrlKey) {
 					switch (event.keyCode) {
 						case 87:
@@ -52497,6 +52496,11 @@
 							break;
 						case 68:
 							_this.right = false;
+							break;
+						case 79:
+							if ((0, _jquery2.default)("#region_buttons").is(":visible")) {
+								_this.gravis.regionEditor.view.save(_this.rx, _this.ry);
+							}
 							break;
 					}
 				}
@@ -52825,7 +52829,7 @@
 				_jquery2.default.ajax({
 					type: 'POST',
 					url: "http://localhost:9090/cgi-bin/upload.py",
-					data: "name=" + this.name + "&file=" + JSON.stringify(region),
+					data: "name=" + this.name + "&expanded=0&file=" + JSON.stringify(region),
 					success: function success() {
 						console.log("Success!");
 					},
@@ -52841,18 +52845,15 @@
 			value: function load(rx, ry, onSuccess) {
 				var onError = arguments.length <= 3 || arguments[3] === undefined ? null : arguments[3];
 	
-				console.log("Loading region " + rx + "," + ry);
 				var name = "/models/regions/region" + rx.toString(16) + ry.toString(16) + ".json?cb=" + window.cb;
 				_jquery2.default.ajax({
 					type: 'GET',
 					dataType: 'json',
 					url: name + "?cb=" + window.cb,
 					success: function success(region) {
-						console.log("Loaded region:", region);
 						return onSuccess(new Region(rx, ry, region.region));
 					},
 					error: function error(err) {
-						console.log("Error downloading region: " + name + " error=" + err);
 						if (onError) onError();
 					}
 				});
@@ -52919,7 +52920,7 @@
 	var PERLIN_CAP = 0.3;
 	var SIMPLEX_MULT = 2.3;
 	var SIMPLEX_CAP = 0.25;
-	var BEACH_WIDTH = 2;
+	var BEACH_WIDTH = 1;
 	var ERODE_COUNT = 25;
 	var BORDER = 3;
 	var RIVER_COUNT = 10;
@@ -53345,13 +53346,9 @@
 	
 							var x = _node2[0];
 							var y = _node2[1];
-							//if(this.canBeRoad(x - 1, y - 1)) a.push([x - 1, y - 1]);
 	
 							if (_this5.canBeRoad(x, y - 1)) a.push([x, y - 1]);
-							//if(this.canBeRoad(x + 1, y - 1)) a.push([x + 1, y - 1]);
-							//if(this.canBeRoad(x - 1, y + 1)) a.push([x - 1, y + 1]);
 							if (_this5.canBeRoad(x, y + 1)) a.push([x, y + 1]);
-							//if(this.canBeRoad(x + 1, y + 1)) a.push([x + 1, y + 1]);
 							if (_this5.canBeRoad(x + 1, y)) a.push([x + 1, y]);
 							if (_this5.canBeRoad(x - 1, y)) a.push([x - 1, y]);
 							return a;
@@ -56053,6 +56050,7 @@
 				(0, _jquery2.default)("#rx").text(rx);
 				(0, _jquery2.default)("#ry").text(ry);
 				console.log("Building map...");
+				this.view.reset();
 				this.loadRegion(rx, ry);
 			}
 		}, {
@@ -56072,7 +56070,12 @@
 						var dy = _REGION_OFFSETS$index[1];
 	
 						if (rx + dx >= 0 && ry + dy >= 0 && rx + dx < constants.REGION_COUNT && ry + dy < constants.REGION_COUNT) {
-							regionModel.Region.load(rx + dx, ry + dy, function (region) {
+							_this.loadExpandedOrRegularRegion(rx + dx, ry + dy, function (expandedRegion) {
+								console.log("COPYing region " + (rx + dx) + "," + (ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
+								_this.view.copy(expandedRegion, dx + 1, dy + 1);
+								_this.loadRegion(rx, ry, index + 1);
+							}, function (region) {
+								console.log("MAKEing region " + (rx + dx) + "," + (ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
 								_this.view.display(region, dx + 1, dy + 1);
 								_this.loadRegion(rx, ry, index + 1);
 							});
@@ -56083,36 +56086,63 @@
 					this.view.finish(function (x, y, point) {
 						var vx = x - 1.5 * constants.VERTEX_SIZE;
 						var vy = y - 1.5 * constants.VERTEX_SIZE;
-						var v = _this.vertexGrid[vx + "," + vy];
-						if (v) {
-							v.z = point.z;
-							v.section = point.type;
-							v.road = point.road;
-							v.beach = point.beach;
-							v.secondTexture = point.secondTexture;
-							v.vx = vx;
-							v.vy = vy;
-						}
+						_this.copyToVertex(vx, vy, point);
 					});
-	
-					// copy the vertices into the buffergeometry
-					this.mesh.geometry.getAttribute("position").copyVector3sArray(this.tmp_geo.vertices);
-					this.mesh.geometry.getAttribute("position").needsUpdate = true;
-					this.mesh.geometry.getAttribute("road").copyArray(this.tmp_geo.vertices.map(function (v) {
-						return v.road;
-					}));
-					this.mesh.geometry.getAttribute("road").needsUpdate = true;
-					this.mesh.geometry.getAttribute("beach").copyArray(this.tmp_geo.vertices.map(function (v) {
-						return v.beach;
-					}));
-					this.mesh.geometry.getAttribute("beach").needsUpdate = true;
-					this.mesh.geometry.getAttribute("secondTexture").copyArray(this.tmp_geo.vertices.map(function (v) {
-						return v.secondTexture;
-					}));
-					this.mesh.geometry.getAttribute("secondTexture").needsUpdate = true;
-					this.mesh.geometry.computeVertexNormals();
-					util.updateColors(this.mesh);
+					this.initAttributes();
 				}
+			}
+		}, {
+			key: 'loadExpandedOrRegularRegion',
+			value: function loadExpandedOrRegularRegion(rx, ry, onSuccess, onFailure) {
+				var name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json";
+				_jquery2.default.ajax({
+					type: 'GET',
+					dataType: 'json',
+					url: name + "?cb=" + window.cb,
+					success: function success(expandedRegion) {
+						onSuccess(expandedRegion);
+					},
+					error: function error(err) {
+						regionModel.Region.load(rx, ry, function (region) {
+							onFailure(region);
+						});
+					}
+				});
+			}
+		}, {
+			key: 'copyToVertex',
+			value: function copyToVertex(vx, vy, point) {
+				var v = this.vertexGrid[vx + "," + vy];
+				if (v) {
+					v.z = point.z;
+					v.section = point.type;
+					v.road = point.road;
+					v.beach = point.beach;
+					v.secondTexture = point.secondTexture;
+					v.vx = vx;
+					v.vy = vy;
+				}
+			}
+		}, {
+			key: 'initAttributes',
+			value: function initAttributes() {
+				// copy the vertices into the buffergeometry
+				this.mesh.geometry.getAttribute("position").copyVector3sArray(this.tmp_geo.vertices);
+				this.mesh.geometry.getAttribute("position").needsUpdate = true;
+				this.mesh.geometry.getAttribute("road").copyArray(this.tmp_geo.vertices.map(function (v) {
+					return v.road;
+				}));
+				this.mesh.geometry.getAttribute("road").needsUpdate = true;
+				this.mesh.geometry.getAttribute("beach").copyArray(this.tmp_geo.vertices.map(function (v) {
+					return v.beach;
+				}));
+				this.mesh.geometry.getAttribute("beach").needsUpdate = true;
+				this.mesh.geometry.getAttribute("secondTexture").copyArray(this.tmp_geo.vertices.map(function (v) {
+					return v.secondTexture;
+				}));
+				this.mesh.geometry.getAttribute("secondTexture").needsUpdate = true;
+				this.mesh.geometry.computeVertexNormals();
+				util.updateColors(this.mesh);
 			}
 		}]);
 
@@ -56664,6 +56694,10 @@
 	
 	var _three2 = _interopRequireDefault(_three);
 	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
 	var _constants = __webpack_require__(3);
 	
 	var constants = _interopRequireWildcard(_constants);
@@ -56691,6 +56725,7 @@
 		function View() {
 			_classCallCheck(this, View);
 	
+			this.copied = {};
 			this.z = [];
 	
 			// init height map
@@ -56704,6 +56739,79 @@
 		}
 	
 		_createClass(View, [{
+			key: 'reset',
+			value: function reset() {
+				this.copied = {};
+			}
+		}, {
+			key: 'compressFloat',
+			value: function compressFloat(f) {
+				return Math.round(f * 1000) / 1000.0;
+			}
+		}, {
+			key: 'save',
+			value: function save(rx, ry) {
+				console.log("Creating data file " + name + "...");
+				var d = [];
+				for (var x = 0; x < constants.VERTEX_SIZE; x++) {
+					for (var y = 0; y < constants.VERTEX_SIZE; y++) {
+						var p = this.z[constants.VERTEX_SIZE + x][constants.VERTEX_SIZE + y];
+						d.push(this.compressFloat(p.z));
+						d.push(p.type);
+						d.push(this.compressFloat(p.road));
+						d.push(this.compressFloat(p.beach));
+						d.push(this.compressFloat(p.secondTexture));
+					}
+				}
+	
+				var name = "region" + rx.toString(16) + ry.toString(16);
+				var region = {
+					region: d,
+					version: 1,
+					name: name,
+					x: rx,
+					y: ry
+				};
+	
+				console.log("Uploading " + name + "...");
+				_jquery2.default.ajax({
+					type: 'POST',
+					url: "http://localhost:9090/cgi-bin/upload.py",
+					data: "name=" + name + "&expanded=1&file=" + JSON.stringify(region),
+					success: function success() {
+						console.log("Success!");
+					},
+					error: function error(_error) {
+						console.log("error: ", _error);
+					},
+					dataType: "text/json"
+				});
+				console.log("Stored on server.");
+			}
+		}, {
+			key: 'copy',
+			value: function copy(expandedRegion, rx, ry) {
+				var i = 0;
+				var x = 0;
+				var y = 0;
+				while (i < expandedRegion.region.length) {
+					var p = this.z[rx * constants.VERTEX_SIZE + x][ry * constants.VERTEX_SIZE + y];
+	
+					p.z = expandedRegion.region[i++];
+					p.type = expandedRegion.region[i++];
+					p.road = expandedRegion.region[i++];
+					p.beach = expandedRegion.region[i++];
+					p.secondTexture = expandedRegion.region[i++];
+	
+					y++;
+					if (y >= constants.VERTEX_SIZE) {
+						y = 0;
+						x++;
+					}
+				}
+				this.copied[rx + "," + ry] = 1;
+			}
+		}, {
 			key: 'display',
 			value: function display(region, rx, ry) {
 				// create height map
@@ -56798,9 +56906,7 @@
 			value: function makeSubSection(x, y, sectionType, dx, dy) {
 				for (var xx = 0; xx < constants.SECTION_SIZE / 2; xx++) {
 					for (var yy = 0; yy < constants.SECTION_SIZE / 2; yy++) {
-						var point = this.z[x + xx + dx][y + yy + dy];
-						point.z = this.calcZ(sectionType);
-						//point.type = sectionType;
+						this.setAttribValue(x + xx + dx, y + yy + dy, 'z', this.calcZ(sectionType));
 					}
 				}
 			}
@@ -56863,9 +56969,17 @@
 				var h = a.reduce(function (p, v) {
 					return p + v;
 				}, 0) / a.length;
-				//let r = h / maxValue;
-				//this.z[x][y][attrib] = h + Math.random() * r - r/2;
-				this.z[x][y][attrib] = setValue(h);
+				this.setAttribValue(x, y, attrib, setValue(h));
+			}
+	
+			// don't touch values that were copied in
+	
+		}, {
+			key: 'setAttribValue',
+			value: function setAttribValue(x, y, attrib, value) {
+				var rx = x / constants.VERTEX_SIZE | 0;
+				var ry = y / constants.VERTEX_SIZE | 0;
+				if (!this.copied[rx + "," + ry]) this.z[x][y][attrib] = value;
 			}
 		}]);
 
