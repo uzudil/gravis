@@ -4,6 +4,7 @@ import * as $$ from 'jquery-mousewheel';
 import * as constants from 'constants';
 import * as util from 'util';
 import * as regionModel from 'region';
+import { Expander } from 'expander';
 
 export class Controller {
 	constructor(gravis) {
@@ -93,6 +94,9 @@ export class Controller {
 						this.rx++;
 						this.fw = this.bw = this.left = this.right = false;
 						this.gravis.regionEditor.edit(this.rx, this.ry);
+						break;
+					case 79:
+						new Expander(() => {}).saveAllExpandedRegions();
 						break;
 				}
 			} else {

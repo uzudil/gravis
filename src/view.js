@@ -10,7 +10,12 @@ const DEFAULT_POINT = {z: 0, type: 0, road: 0, secondTexture: 0, beach: 0};
  */
 export class View {
 	constructor() {
+		this.reset();
+	}
+
+	reset() {
 		this.copied = {};
+		this.generatedCount = 0;
 		this.z = [];
 
 		// init height map
@@ -21,10 +26,6 @@ export class View {
 				a.push(this.defaultPoint());
 			}
 		}
-	}
-
-	reset() {
-		this.copied = {};
 	}
 
 	compressFloat (f) {
@@ -89,6 +90,7 @@ export class View {
 	}
 
 	display(region, rx, ry) {
+		this.generatedCount++;
 		// create height map
 		for (let x = 0; x < constants.REGION_SIZE; x++) {
 			for (let y = 0; y < constants.REGION_SIZE; y++) {
@@ -98,36 +100,46 @@ export class View {
 	}
 
 	finish(setZ) {
-		// draw edges
-		for(let x = 0; x < 3 * constants.VERTEX_SIZE; x+=constants.SECTION_SIZE) {
-			for(let y = 0; y < 3 * constants.VERTEX_SIZE; y+=constants.SECTION_SIZE) {
-				let n = this.z[x][y - constants.SECTION_SIZE];
-				let s = this.z[x][y + constants.SECTION_SIZE];
-				let w = x > constants.SECTION_SIZE ? this.z[x - constants.SECTION_SIZE][y] : null;
-				let e = x < 3 * constants.VERTEX_SIZE - constants.SECTION_SIZE ? this.z[x + constants.SECTION_SIZE][y] : null;
-				let dx = -1;
-				let dy = -1;
-				let type = null;
-				if(this.isSame(n, e)) {
-					dx = constants.SECTION_SIZE / 2; dy = 0; type = e.type;
-				}
-				if(this.isSame(s, e)) {
-					dx = constants.SECTION_SIZE / 2; dy = constants.SECTION_SIZE / 2; type = e.type;
-				}
-				if(this.isSame(n, w)) {
-					dx = 0; dy = 0; type = w.type;
-				}
-				if(this.isSame(s, w)) {
-					dx = 0; dy = constants.SECTION_SIZE / 2; type = w.type;
-				}
+		if(this.generatedCount > 0) {
+			// draw edges
+			for (let x = 0; x < 3 * constants.VERTEX_SIZE; x += constants.SECTION_SIZE) {
+				for (let y = 0; y < 3 * constants.VERTEX_SIZE; y += constants.SECTION_SIZE) {
+					let n = this.z[x][y - constants.SECTION_SIZE];
+					let s = this.z[x][y + constants.SECTION_SIZE];
+					let w = x > constants.SECTION_SIZE ? this.z[x - constants.SECTION_SIZE][y] : null;
+					let e = x < 3 * constants.VERTEX_SIZE - constants.SECTION_SIZE ? this.z[x + constants.SECTION_SIZE][y] : null;
+					let dx = -1;
+					let dy = -1;
+					let type = null;
+					if (this.isSame(n, e)) {
+						dx = constants.SECTION_SIZE / 2;
+						dy = 0;
+						type = e.type;
+					}
+					if (this.isSame(s, e)) {
+						dx = constants.SECTION_SIZE / 2;
+						dy = constants.SECTION_SIZE / 2;
+						type = e.type;
+					}
+					if (this.isSame(n, w)) {
+						dx = 0;
+						dy = 0;
+						type = w.type;
+					}
+					if (this.isSame(s, w)) {
+						dx = 0;
+						dy = constants.SECTION_SIZE / 2;
+						type = w.type;
+					}
 
-				if(type) this.makeSubSection(x, y, type, dx, dy);
+					if (type) this.makeSubSection(x, y, type, dx, dy);
+				}
 			}
-		}
 
-		// apply erosion
-		for(let i = 0; i < 8; i++) {
-			this.erode();
+			// apply erosion
+			for (let i = 0; i < 8; i++) {
+				this.erode();
+			}
 		}
 
 		// move mesh points as in height map

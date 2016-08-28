@@ -24,6 +24,15 @@ export const REGION_COUNT = WORLD_SIZE / REGION_SIZE;
 
 export const ORIGIN = new THREE.Vector3(0, 0, 0);
 
+export const REGION_OFFSETS = [];
+if(REGION_OFFSETS.length == 0) {
+	for (let dx = -1; dx <= 1; dx++) {
+		for (let dy = -1; dy <= 1; dy++) {
+			REGION_OFFSETS.push([dx, dy]);
+		}
+	}
+}
+
 export const TEX = {
 	grass1: "../images/textures/seamless-pixels.blogspot.com/Grass 02 seamless.jpg",
 	clay1: "../images/textures/seamless-pixels.blogspot.com/Seamless clay cracks.jpg",

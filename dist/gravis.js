@@ -51670,7 +51670,7 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
-	exports.SHADERS = exports.TEX = exports.ORIGIN = exports.REGION_COUNT = exports.VERTEX_SIZE = exports.SECTION_SIZE = exports.REGION_SIZE = exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
+	exports.SHADERS = exports.TEX = exports.REGION_OFFSETS = exports.ORIGIN = exports.REGION_COUNT = exports.VERTEX_SIZE = exports.SECTION_SIZE = exports.REGION_SIZE = exports.WORLD_SIZE = exports.MATERIAL = exports.DIR2_COLOR = exports.DIR1_COLOR = exports.AMBIENT_COLOR = exports.FAR_DIST = exports.ASPECT_RATIO = exports.DEV_MODE = exports.VERSION = undefined;
 	
 	var _three = __webpack_require__(1);
 	
@@ -51701,6 +51701,15 @@
 	var REGION_COUNT = exports.REGION_COUNT = WORLD_SIZE / REGION_SIZE;
 	
 	var ORIGIN = exports.ORIGIN = new _three2.default.Vector3(0, 0, 0);
+	
+	var REGION_OFFSETS = exports.REGION_OFFSETS = [];
+	if (REGION_OFFSETS.length == 0) {
+		for (var dx = -1; dx <= 1; dx++) {
+			for (var dy = -1; dy <= 1; dy++) {
+				REGION_OFFSETS.push([dx, dy]);
+			}
+		}
+	}
 	
 	var TEX = exports.TEX = {
 		grass1: "../images/textures/seamless-pixels.blogspot.com/Grass 02 seamless.jpg",
@@ -52384,6 +52393,8 @@
 	
 	var regionModel = _interopRequireWildcard(_region);
 	
+	var _expander = __webpack_require__(28);
+	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -52481,6 +52492,9 @@
 							_this.rx++;
 							_this.fw = _this.bw = _this.left = _this.right = false;
 							_this.gravis.regionEditor.edit(_this.rx, _this.ry);
+							break;
+						case 79:
+							new _expander.Expander(function () {}).saveAllExpandedRegions();
 							break;
 					}
 				} else {
@@ -55930,15 +55944,6 @@
 	var TIME_VEC = new _three2.default.Vector3(0, 0, 0);
 	var THE_CLOCK = new _three2.default.Clock();
 	
-	var REGION_OFFSETS = [];
-	if (REGION_OFFSETS.length == 0) {
-		for (var dx = -1; dx <= 1; dx++) {
-			for (var dy = -1; dy <= 1; dy++) {
-				REGION_OFFSETS.push([dx, dy]);
-			}
-		}
-	}
-	
 	var RegionEditor = exports.RegionEditor = function () {
 		function RegionEditor(gravis) {
 			_classCallCheck(this, RegionEditor);
@@ -56060,14 +56065,14 @@
 	
 				var index = arguments.length <= 2 || arguments[2] === undefined ? 0 : arguments[2];
 	
-				if (index < REGION_OFFSETS.length) {
+				if (index < constants.REGION_OFFSETS.length) {
 					(function () {
 						// load regions into the view
 	
-						var _REGION_OFFSETS$index = _slicedToArray(REGION_OFFSETS[index], 2);
+						var _constants$REGION_OFF = _slicedToArray(constants.REGION_OFFSETS[index], 2);
 	
-						var dx = _REGION_OFFSETS$index[0];
-						var dy = _REGION_OFFSETS$index[1];
+						var dx = _constants$REGION_OFF[0];
+						var dy = _constants$REGION_OFF[1];
 	
 						if (rx + dx >= 0 && ry + dy >= 0 && rx + dx < constants.REGION_COUNT && ry + dy < constants.REGION_COUNT) {
 							_this.loadExpandedOrRegularRegion(rx + dx, ry + dy, function (expandedRegion) {
@@ -56079,6 +56084,8 @@
 								_this.view.display(region, dx + 1, dy + 1);
 								_this.loadRegion(rx, ry, index + 1);
 							});
+						} else {
+							_this.loadRegion(rx, ry, index + 1);
 						}
 					})();
 				} else {
@@ -56725,23 +56732,24 @@
 		function View() {
 			_classCallCheck(this, View);
 	
-			this.copied = {};
-			this.z = [];
-	
-			// init height map
-			for (var x = 0; x < 3 * constants.VERTEX_SIZE; x++) {
-				var a = [];
-				this.z.push(a);
-				for (var y = 0; y < 3 * constants.VERTEX_SIZE; y++) {
-					a.push(this.defaultPoint());
-				}
-			}
+			this.reset();
 		}
 	
 		_createClass(View, [{
 			key: 'reset',
 			value: function reset() {
 				this.copied = {};
+				this.generatedCount = 0;
+				this.z = [];
+	
+				// init height map
+				for (var x = 0; x < 3 * constants.VERTEX_SIZE; x++) {
+					var a = [];
+					this.z.push(a);
+					for (var y = 0; y < 3 * constants.VERTEX_SIZE; y++) {
+						a.push(this.defaultPoint());
+					}
+				}
 			}
 		}, {
 			key: 'compressFloat',
@@ -56814,6 +56822,7 @@
 		}, {
 			key: 'display',
 			value: function display(region, rx, ry) {
+				this.generatedCount++;
 				// create height map
 				for (var x = 0; x < constants.REGION_SIZE; x++) {
 					for (var y = 0; y < constants.REGION_SIZE; y++) {
@@ -56824,36 +56833,46 @@
 		}, {
 			key: 'finish',
 			value: function finish(setZ) {
-				// draw edges
-				for (var x = 0; x < 3 * constants.VERTEX_SIZE; x += constants.SECTION_SIZE) {
-					for (var y = 0; y < 3 * constants.VERTEX_SIZE; y += constants.SECTION_SIZE) {
-						var n = this.z[x][y - constants.SECTION_SIZE];
-						var s = this.z[x][y + constants.SECTION_SIZE];
-						var w = x > constants.SECTION_SIZE ? this.z[x - constants.SECTION_SIZE][y] : null;
-						var e = x < 3 * constants.VERTEX_SIZE - constants.SECTION_SIZE ? this.z[x + constants.SECTION_SIZE][y] : null;
-						var dx = -1;
-						var dy = -1;
-						var type = null;
-						if (this.isSame(n, e)) {
-							dx = constants.SECTION_SIZE / 2;dy = 0;type = e.type;
-						}
-						if (this.isSame(s, e)) {
-							dx = constants.SECTION_SIZE / 2;dy = constants.SECTION_SIZE / 2;type = e.type;
-						}
-						if (this.isSame(n, w)) {
-							dx = 0;dy = 0;type = w.type;
-						}
-						if (this.isSame(s, w)) {
-							dx = 0;dy = constants.SECTION_SIZE / 2;type = w.type;
-						}
+				if (this.generatedCount > 0) {
+					// draw edges
+					for (var x = 0; x < 3 * constants.VERTEX_SIZE; x += constants.SECTION_SIZE) {
+						for (var y = 0; y < 3 * constants.VERTEX_SIZE; y += constants.SECTION_SIZE) {
+							var n = this.z[x][y - constants.SECTION_SIZE];
+							var s = this.z[x][y + constants.SECTION_SIZE];
+							var w = x > constants.SECTION_SIZE ? this.z[x - constants.SECTION_SIZE][y] : null;
+							var e = x < 3 * constants.VERTEX_SIZE - constants.SECTION_SIZE ? this.z[x + constants.SECTION_SIZE][y] : null;
+							var dx = -1;
+							var dy = -1;
+							var type = null;
+							if (this.isSame(n, e)) {
+								dx = constants.SECTION_SIZE / 2;
+								dy = 0;
+								type = e.type;
+							}
+							if (this.isSame(s, e)) {
+								dx = constants.SECTION_SIZE / 2;
+								dy = constants.SECTION_SIZE / 2;
+								type = e.type;
+							}
+							if (this.isSame(n, w)) {
+								dx = 0;
+								dy = 0;
+								type = w.type;
+							}
+							if (this.isSame(s, w)) {
+								dx = 0;
+								dy = constants.SECTION_SIZE / 2;
+								type = w.type;
+							}
 	
-						if (type) this.makeSubSection(x, y, type, dx, dy);
+							if (type) this.makeSubSection(x, y, type, dx, dy);
+						}
 					}
-				}
 	
-				// apply erosion
-				for (var i = 0; i < 8; i++) {
-					this.erode();
+					// apply erosion
+					for (var i = 0; i < 8; i++) {
+						this.erode();
+					}
 				}
 	
 				// move mesh points as in height map
@@ -57051,6 +57070,142 @@
 	
 		this.skyBox = new _three2.default.Mesh(new _three2.default.BoxGeometry(90000, 90000, 90000), skyBoxMaterial);
 	};
+
+/***/ },
+/* 28 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.Expander = undefined;
+	
+	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _view = __webpack_require__(26);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	var _region = __webpack_require__(9);
+	
+	var regionModel = _interopRequireWildcard(_region);
+	
+	var _section = __webpack_require__(25);
+	
+	var sectionDef = _interopRequireWildcard(_section);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var Expander = exports.Expander = function () {
+		function Expander(onSuccess) {
+			_classCallCheck(this, Expander);
+	
+			this.view = new _view.View();
+			this.rx = 0;
+			this.ry = 0;
+			this.onSuccess = onSuccess;
+		}
+	
+		_createClass(Expander, [{
+			key: 'saveAllExpandedRegions',
+			value: function saveAllExpandedRegions() {
+				(0, _jquery2.default)("#saving-regions").show();
+				this.workOnRegion();
+			}
+		}, {
+			key: 'workOnRegion',
+			value: function workOnRegion() {
+				(0, _jquery2.default)("#saving-regions-log").append(".");
+				console.log("Saving region " + this.rx + "," + this.ry + "...");
+				this.view.reset();
+				this.loadRegion();
+			}
+		}, {
+			key: 'loadRegion',
+			value: function loadRegion() {
+				var _this = this;
+	
+				var index = arguments.length <= 0 || arguments[0] === undefined ? 0 : arguments[0];
+	
+				if (index < constants.REGION_OFFSETS.length) {
+					(function () {
+						// load regions into the view
+	
+						var _constants$REGION_OFF = _slicedToArray(constants.REGION_OFFSETS[index], 2);
+	
+						var dx = _constants$REGION_OFF[0];
+						var dy = _constants$REGION_OFF[1];
+	
+						if (_this.rx + dx >= 0 && _this.ry + dy >= 0 && _this.rx + dx < constants.REGION_COUNT && _this.ry + dy < constants.REGION_COUNT) {
+							_this.loadExpandedOrRegularRegion(_this.rx + dx, _this.ry + dy, function (expandedRegion) {
+								console.log("COPYing region " + (_this.rx + dx) + "," + (_this.ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
+								_this.view.copy(expandedRegion, dx + 1, dy + 1);
+								_this.loadRegion(index + 1);
+							}, function (region) {
+								console.log("MAKEing region " + (_this.rx + dx) + "," + (_this.ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
+								_this.view.display(region, dx + 1, dy + 1);
+								_this.loadRegion(index + 1);
+							});
+						} else {
+							_this.loadRegion(index + 1);
+						}
+					})();
+				} else {
+					this.view.finish(function (x, y, point) {});
+					this.view.save(this.rx, this.ry);
+					this.rx++;
+					if (this.rx >= constants.REGION_SIZE) {
+						this.rx = 0;
+						this.ry++;
+						if (this.ry >= constants.REGION_SIZE) {
+							(0, _jquery2.default)("#saving-regions").hide();
+							this.onSuccess();
+							return;
+						}
+					}
+					this.workOnRegion();
+				}
+			}
+		}, {
+			key: 'loadExpandedOrRegularRegion',
+			value: function loadExpandedOrRegularRegion(rx, ry, onSuccess, onFailure) {
+				var name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json";
+				_jquery2.default.ajax({
+					type: 'GET',
+					dataType: 'json',
+					url: name + "?cb=" + window.cb,
+					success: function success(expandedRegion) {
+						onSuccess(expandedRegion);
+					},
+					error: function error(err) {
+						regionModel.Region.load(rx, ry, function (region) {
+							onFailure(region);
+						});
+					}
+				});
+			}
+		}]);
+
+		return Expander;
+	}();
 
 /***/ }
 /******/ ]);

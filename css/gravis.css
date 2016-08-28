@@ -89,3 +89,17 @@ body {
     position: fixed;
     color: white;
 }
+
+#saving-regions {
+    width: 1000px;
+    height: 500px;
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    margin-left: -500px;
+    margin-top: -250px;
+    display: none;
+    overflow: auto;
+    background: #ccc;
+    color: #000;
+}

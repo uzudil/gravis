@@ -12,15 +12,6 @@ const WATER_COLOR = new THREE.Color(0.1, 0.3, 0.85);
 const TIME_VEC = new THREE.Vector3(0, 0, 0);
 const THE_CLOCK = new THREE.Clock();
 
-const REGION_OFFSETS = [];
-if(REGION_OFFSETS.length == 0) {
-	for (let dx = -1; dx <= 1; dx++) {
-		for (let dy = -1; dy <= 1; dy++) {
-			REGION_OFFSETS.push([dx, dy]);
-		}
-	}
-}
-
 export class RegionEditor {
 	constructor(gravis) {
 		this.gravis = gravis;
@@ -117,9 +108,9 @@ export class RegionEditor {
 	}
 
 	loadRegion(rx, ry, index=0) {
-		if (index < REGION_OFFSETS.length) {
+		if (index < constants.REGION_OFFSETS.length) {
 			// load regions into the view
-			let [dx, dy] = REGION_OFFSETS[index];
+			let [dx, dy] = constants.REGION_OFFSETS[index];
 			if (rx + dx >= 0 && ry + dy >= 0 && rx + dx < constants.REGION_COUNT && ry + dy < constants.REGION_COUNT) {
 				this.loadExpandedOrRegularRegion(rx + dx, ry + dy, (expandedRegion) => {
 					console.log("COPYing region " + (rx + dx) + "," + (ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
@@ -130,6 +121,8 @@ export class RegionEditor {
 					this.view.display(region, dx + 1, dy + 1);
 					this.loadRegion(rx, ry, index + 1);
 				});
+			} else {
+				this.loadRegion(rx, ry, index + 1);
 			}
 		} else {
 			// change vertices to the heights in the view
