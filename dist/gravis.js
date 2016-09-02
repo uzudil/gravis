@@ -51739,7 +51739,7 @@
 		sand1: "../images/textures/seamless-pixels.blogspot.com/Seamless beach sand.jpg"
 	};
 	
-	var SHADERS = exports.SHADERS = ["../shaders/map.vert", "../shaders/map.frag", "../shaders/water.vert", "../shaders/water.frag"];
+	var SHADERS = exports.SHADERS = ["../shaders/map.vert", "../shaders/map.frag"];
 
 /***/ },
 /* 4 */

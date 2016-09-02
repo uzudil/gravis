@@ -50,6 +50,5 @@ export const TEX = {
 };
 
 export const SHADERS = [
-	"../shaders/map.vert", "../shaders/map.frag",
-	"../shaders/water.vert", "../shaders/water.frag"
+	"../shaders/map.vert", "../shaders/map.frag"
 ];
