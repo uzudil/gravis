@@ -86,7 +86,7 @@ THREE.ShaderLib[ 'water' ] = {
 
 		'void main()',
 		'{',
-		'	vec4 noise = getNoise( worldPosition.xz );',
+		'	vec4 noise = getNoise( worldPosition.xy );',
 		'	vec3 surfaceNormal = normalize( noise.xzy * vec3( 1.5, 1.0, 1.5 ) );',
 
 		'	vec3 diffuseLight = vec3(0.0);',
