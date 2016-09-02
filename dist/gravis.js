@@ -76,15 +76,15 @@
 	
 	var controller = _interopRequireWildcard(_controller);
 	
-	var _overmap = __webpack_require__(10);
+	var _overmap = __webpack_require__(13);
 	
 	var overmap = _interopRequireWildcard(_overmap);
 	
-	var _regioneditor = __webpack_require__(22);
+	var _regioneditor = __webpack_require__(25);
 	
 	var regioneditor = _interopRequireWildcard(_regioneditor);
 	
-	var _skybox = __webpack_require__(27);
+	var _skybox = __webpack_require__(28);
 	
 	var skybox = _interopRequireWildcard(_skybox);
 	
@@ -205,7 +205,9 @@
 				this.width = this.height * constants.ASPECT_RATIO;
 	
 				window.models = this.models = models;
+	
 				this.camera = new _three2.default.PerspectiveCamera(45, constants.ASPECT_RATIO, 1, constants.FAR_DIST);
+				this.camera.up = new _three2.default.Vector3(0, 0, 1);
 				//let orthoDiv = this.width / (1 * constants.REGION_SIZE * constants.SECTION_SIZE);
 				//this.camera = new THREE.OrthographicCamera( this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, constants.FAR_DIST );
 	
@@ -233,7 +235,7 @@
 	
 				this.prevTime = 0;
 	
-				this.scene.add(new skybox.SkyBox().skyBox);
+				this.skybox = new skybox.SkyBox(this.scene);
 	
 				(0, _jquery2.default)("body").append(this.renderer.domElement);
 				(0, _jquery2.default)("canvas").click(function (event) {
@@ -270,13 +272,23 @@
 				this.overmap = new overmap.OverMap(this);
 				this.regionEditor = new regioneditor.RegionEditor(this);
 	
-				//this.camera.rotation.set( 0, 0, 0 );
-				this.camera.position.set(100, 100, 100);
-				this.camera.lookAt(constants.ORIGIN);
+				// camera rotation
+				this.camera.rotation.set(0, 0, 0);
 	
-				this.regionEditor.obj.rotation.set(-Math.PI / 2, 0, 0);
-				//this.obj.rotation.set(-Math.PI / 4, 0, Math.PI / 4);
-				//this.obj.position.z = -500;
+				this.pitch = new _three2.default.Object3D();
+				this.pitch.rotation.x = Math.PI / 4;
+				this.pitch.add(this.camera);
+	
+				this.roll = new _three2.default.Object3D();
+				this.roll.add(this.pitch);
+	
+				// yaw
+				this.yaw = new _three2.default.Object3D();
+				this.yaw.add(this.roll);
+				this.yaw.rotation.z = Math.PI;
+				this.scene.add(this.yaw);
+	
+				this.yaw.position.set(0, 0, 45);
 	
 				this.controller.start();
 	
@@ -312,7 +324,7 @@
 	}();
 	
 	(0, _jquery2.default)(document).ready(function () {
-		window.eniz = new Gravis();
+		window.gravis = new Gravis();
 	});
 
 /***/ },
@@ -52393,7 +52405,7 @@
 	
 	var regionModel = _interopRequireWildcard(_region);
 	
-	var _expander = __webpack_require__(28);
+	var _expander = __webpack_require__(10);
 	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
@@ -52437,7 +52449,6 @@
 				return true;
 			});
 			(0, _jquery2.default)("canvas").mousewheel(function (event) {
-				//console.log(event.deltaX, event.deltaY, event.deltaFactor);
 				var s = void 0;
 				if (event.deltaY > 0) s = _this.gravis.regionEditor.obj.scale.x * 1.25;else s = _this.gravis.regionEditor.obj.scale.x / 1.25;
 				if (s < constants.EDITOR_SCALE) s = constants.EDITOR_SCALE;
@@ -52446,10 +52457,10 @@
 			});
 			(0, _jquery2.default)("canvas").mousemove(function (event) {
 				var mx = event.originalEvent.movementX;
-				// let my = event.originalEvent.movementY;
+				var my = event.originalEvent.movementY;
 				_this.theta += mx * 0.01;
-				_this.gravis.camera.position.set(100 * Math.cos(_this.theta), 100, 100 * Math.sin(_this.theta));
-				_this.gravis.camera.lookAt(constants.ORIGIN);
+				_this.gravis.yaw.rotation.z -= mx * 0.01;
+				//this.gravis.pitch.rotation.x -= my * 0.01;
 			});
 			(0, _jquery2.default)(document).keydown(function (event) {
 				if (!event.ctrlKey) {
@@ -52470,7 +52481,7 @@
 				}
 			});
 			(0, _jquery2.default)(document).keyup(function (event) {
-				console.log(event.keyCode);
+				//console.log(event.keyCode);
 				if (event.ctrlKey) {
 					switch (event.keyCode) {
 						case 87:
@@ -52553,14 +52564,14 @@
 			key: 'update',
 			value: function update(delta) {
 				this.direction.set(0, 0, 0);
-				if (this.fw) this.direction.z = -1;
-				if (this.bw) this.direction.z = 1;
-				if (this.right) this.direction.x = -1;
-				if (this.left) this.direction.x = 1;
+				if (this.fw) this.direction.y = 1;
+				if (this.bw) this.direction.y = -1;
+				if (this.right) this.direction.x = 1;
+				if (this.left) this.direction.x = -1;
 	
 				if (this.fw || this.bw || this.left || this.right) {
-					var speed = 100 * delta;
-					this.gravis.regionEditor.baseObj.translateOnAxis(this.direction, speed);
+					var speed = 30 * delta;
+					this.gravis.yaw.translateOnAxis(this.direction, speed);
 				}
 			}
 		}]);
@@ -52886,6 +52897,505 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
+	exports.Expander = undefined;
+	
+	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _view = __webpack_require__(11);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	var _region = __webpack_require__(9);
+	
+	var regionModel = _interopRequireWildcard(_region);
+	
+	var _section = __webpack_require__(12);
+	
+	var sectionDef = _interopRequireWildcard(_section);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var Expander = exports.Expander = function () {
+		function Expander(onSuccess) {
+			_classCallCheck(this, Expander);
+	
+			this.view = new _view.View();
+			this.rx = 0;
+			this.ry = 0;
+			this.onSuccess = onSuccess;
+		}
+	
+		_createClass(Expander, [{
+			key: 'saveAllExpandedRegions',
+			value: function saveAllExpandedRegions() {
+				(0, _jquery2.default)("#saving-regions").show();
+				this.workOnRegion();
+			}
+		}, {
+			key: 'workOnRegion',
+			value: function workOnRegion() {
+				(0, _jquery2.default)("#saving-regions-log").append(".");
+				console.log("Saving region " + this.rx + "," + this.ry + "...");
+				this.view.reset();
+				this.loadRegion();
+			}
+		}, {
+			key: 'loadRegion',
+			value: function loadRegion() {
+				var _this = this;
+	
+				var index = arguments.length <= 0 || arguments[0] === undefined ? 0 : arguments[0];
+	
+				if (index < constants.REGION_OFFSETS.length) {
+					(function () {
+						// load regions into the view
+	
+						var _constants$REGION_OFF = _slicedToArray(constants.REGION_OFFSETS[index], 2);
+	
+						var dx = _constants$REGION_OFF[0];
+						var dy = _constants$REGION_OFF[1];
+	
+						if (_this.rx + dx >= 0 && _this.ry + dy >= 0 && _this.rx + dx < constants.REGION_COUNT && _this.ry + dy < constants.REGION_COUNT) {
+							_this.loadExpandedOrRegularRegion(_this.rx + dx, _this.ry + dy, function (expandedRegion) {
+								console.log("COPYing region " + (_this.rx + dx) + "," + (_this.ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
+								_this.view.copy(expandedRegion, dx + 1, dy + 1);
+								_this.loadRegion(index + 1);
+							}, function (region) {
+								console.log("MAKEing region " + (_this.rx + dx) + "," + (_this.ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
+								_this.view.display(region, dx + 1, dy + 1);
+								_this.loadRegion(index + 1);
+							});
+						} else {
+							_this.loadRegion(index + 1);
+						}
+					})();
+				} else {
+					this.view.finish(function (x, y, point) {});
+					this.view.save(this.rx, this.ry);
+					this.rx++;
+					if (this.rx >= constants.REGION_SIZE) {
+						this.rx = 0;
+						this.ry++;
+						if (this.ry >= constants.REGION_SIZE) {
+							(0, _jquery2.default)("#saving-regions").hide();
+							this.onSuccess();
+							return;
+						}
+					}
+					this.workOnRegion();
+				}
+			}
+		}, {
+			key: 'loadExpandedOrRegularRegion',
+			value: function loadExpandedOrRegularRegion(rx, ry, onSuccess, onFailure) {
+				var name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json";
+				_jquery2.default.ajax({
+					type: 'GET',
+					dataType: 'json',
+					url: name + "?cb=" + window.cb,
+					success: function success(expandedRegion) {
+						onSuccess(expandedRegion);
+					},
+					error: function error(err) {
+						regionModel.Region.load(rx, ry, function (region) {
+							onFailure(region);
+						});
+					}
+				});
+			}
+		}]);
+
+		return Expander;
+	}();
+
+/***/ },
+/* 11 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.View = undefined;
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	var _section = __webpack_require__(12);
+	
+	var sectionDef = _interopRequireWildcard(_section);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var DEFAULT_POINT = { z: 0, type: 0, road: 0, secondTexture: 0, beach: 0 };
+	/**
+	 * All displayed region data in memory.
+	 */
+	
+	var View = exports.View = function () {
+		function View() {
+			_classCallCheck(this, View);
+	
+			this.reset();
+		}
+	
+		_createClass(View, [{
+			key: 'reset',
+			value: function reset() {
+				this.copied = {};
+				this.generatedCount = 0;
+				this.z = [];
+	
+				// init height map
+				for (var x = 0; x < 3 * constants.VERTEX_SIZE; x++) {
+					var a = [];
+					this.z.push(a);
+					for (var y = 0; y < 3 * constants.VERTEX_SIZE; y++) {
+						a.push(this.defaultPoint());
+					}
+				}
+			}
+		}, {
+			key: 'compressFloat',
+			value: function compressFloat(f) {
+				return Math.round(f * 1000) / 1000.0;
+			}
+		}, {
+			key: 'save',
+			value: function save(rx, ry) {
+				console.log("Creating data file " + name + "...");
+				var d = [];
+				for (var x = 0; x < constants.VERTEX_SIZE; x++) {
+					for (var y = 0; y < constants.VERTEX_SIZE; y++) {
+						var p = this.z[constants.VERTEX_SIZE + x][constants.VERTEX_SIZE + y];
+						d.push(this.compressFloat(p.z));
+						d.push(p.type);
+						d.push(this.compressFloat(p.road));
+						d.push(this.compressFloat(p.beach));
+						d.push(this.compressFloat(p.secondTexture));
+					}
+				}
+	
+				var name = "region" + rx.toString(16) + ry.toString(16);
+				var region = {
+					region: d,
+					version: 1,
+					name: name,
+					x: rx,
+					y: ry
+				};
+	
+				console.log("Uploading " + name + "...");
+				_jquery2.default.ajax({
+					type: 'POST',
+					url: "http://localhost:9090/cgi-bin/upload.py",
+					data: "name=" + name + "&expanded=1&file=" + JSON.stringify(region),
+					success: function success() {
+						console.log("Success!");
+					},
+					error: function error(_error) {
+						console.log("error: ", _error);
+					},
+					dataType: "text/json"
+				});
+				console.log("Stored on server.");
+			}
+		}, {
+			key: 'copy',
+			value: function copy(expandedRegion, rx, ry) {
+				var i = 0;
+				var x = 0;
+				var y = 0;
+				while (i < expandedRegion.region.length) {
+					var p = this.z[rx * constants.VERTEX_SIZE + x][ry * constants.VERTEX_SIZE + y];
+	
+					p.z = expandedRegion.region[i++];
+					p.type = expandedRegion.region[i++];
+					p.road = expandedRegion.region[i++];
+					p.beach = expandedRegion.region[i++];
+					p.secondTexture = expandedRegion.region[i++];
+	
+					y++;
+					if (y >= constants.VERTEX_SIZE) {
+						y = 0;
+						x++;
+					}
+				}
+				this.copied[rx + "," + ry] = 1;
+			}
+		}, {
+			key: 'display',
+			value: function display(region, rx, ry) {
+				this.generatedCount++;
+				// create height map
+				for (var x = 0; x < constants.REGION_SIZE; x++) {
+					for (var y = 0; y < constants.REGION_SIZE; y++) {
+						this.makeSection(rx, ry, x, y, region.region[x][y]);
+					}
+				}
+			}
+		}, {
+			key: 'finish',
+			value: function finish(setZ) {
+				if (this.generatedCount > 0) {
+					// draw edges
+					for (var x = 0; x < 3 * constants.VERTEX_SIZE; x += constants.SECTION_SIZE) {
+						for (var y = 0; y < 3 * constants.VERTEX_SIZE; y += constants.SECTION_SIZE) {
+							var n = this.z[x][y - constants.SECTION_SIZE];
+							var s = this.z[x][y + constants.SECTION_SIZE];
+							var w = x > constants.SECTION_SIZE ? this.z[x - constants.SECTION_SIZE][y] : null;
+							var e = x < 3 * constants.VERTEX_SIZE - constants.SECTION_SIZE ? this.z[x + constants.SECTION_SIZE][y] : null;
+							var dx = -1;
+							var dy = -1;
+							var type = null;
+							if (this.isSame(n, e)) {
+								dx = constants.SECTION_SIZE / 2;
+								dy = 0;
+								type = e.type;
+							}
+							if (this.isSame(s, e)) {
+								dx = constants.SECTION_SIZE / 2;
+								dy = constants.SECTION_SIZE / 2;
+								type = e.type;
+							}
+							if (this.isSame(n, w)) {
+								dx = 0;
+								dy = 0;
+								type = w.type;
+							}
+							if (this.isSame(s, w)) {
+								dx = 0;
+								dy = constants.SECTION_SIZE / 2;
+								type = w.type;
+							}
+	
+							if (type) this.makeSubSection(x, y, type, dx, dy);
+						}
+					}
+	
+					// apply erosion
+					for (var i = 0; i < 8; i++) {
+						this.erode();
+					}
+				}
+	
+				// move mesh points as in height map
+				for (var _x = 0; _x < 3 * constants.VERTEX_SIZE; _x++) {
+					for (var _y = 0; _y < 3 * constants.VERTEX_SIZE; _y++) {
+						setZ(_x, _y, this.z[_x][_y] || this.defaultPoint());
+					}
+				}
+			}
+		}, {
+			key: 'defaultPoint',
+			value: function defaultPoint() {
+				return Object.assign({}, DEFAULT_POINT);
+			}
+		}, {
+			key: 'isSame',
+			value: function isSame(a, b) {
+				return a && b && a.type == b.type && sectionDef.SECTIONS[a.type].fillCorners;
+			}
+		}, {
+			key: 'makeSection',
+			value: function makeSection(rx, ry, x, y, sectionType) {
+				for (var xx = 0; xx < constants.SECTION_SIZE; xx++) {
+					for (var yy = 0; yy < constants.SECTION_SIZE; yy++) {
+						var px = rx * constants.VERTEX_SIZE + x * constants.SECTION_SIZE + xx;
+						var py = ry * constants.VERTEX_SIZE + y * constants.SECTION_SIZE + yy;
+						var point = this.z[px][py];
+						point.z = this.calcZ(sectionType);
+						point.type = sectionType;
+	
+						var dx = Math.abs(xx - constants.SECTION_SIZE / 2) / (constants.SECTION_SIZE / 2);
+						var dy = Math.abs(yy - constants.SECTION_SIZE / 2) / (constants.SECTION_SIZE / 2);
+						var d = Math.sqrt(dx * dx + dy * dy); // distance from middle of the section (0 - 1)
+						var r = Math.max(1.5 - d, 0); // % of point being this type
+	
+						point.road = this.isOfType(sectionType, 'road') ? 1.0 : 0.0;
+						point.beach = this.isOfType(sectionType, 'beach') || this.isOfType(sectionType, 'sea') ? 1.0 : 0.0;
+						point.secondTexture = (this.isOfType(sectionType, 'land') || this.isOfType(sectionType, 'forest')) && Math.random() >= 0.5 ? 1 : 0;
+						point.r = r;
+					}
+				}
+			}
+		}, {
+			key: 'isOfType',
+			value: function isOfType(sectionType, sectionTypeName) {
+				return sectionType === sectionDef.SECTION_BY_NAME[sectionTypeName];
+			}
+		}, {
+			key: 'makeSubSection',
+			value: function makeSubSection(x, y, sectionType, dx, dy) {
+				for (var xx = 0; xx < constants.SECTION_SIZE / 2; xx++) {
+					for (var yy = 0; yy < constants.SECTION_SIZE / 2; yy++) {
+						this.setAttribValue(x + xx + dx, y + yy + dy, 'z', this.calcZ(sectionType));
+					}
+				}
+			}
+		}, {
+			key: 'calcZ',
+			value: function calcZ(sectionType) {
+				var p = sectionDef.SECTIONS[sectionType].block_props;
+				return Math.random() * p.r - p.r * p.d + p.h;
+			}
+		}, {
+			key: 'erode',
+			value: function erode() {
+				for (var x = 1; x < 3 * constants.VERTEX_SIZE - 1; x++) {
+					for (var y = 1; y < 3 * constants.VERTEX_SIZE - 1; y++) {
+						this.erodeAt(x, y);
+					}
+				}
+			}
+		}, {
+			key: 'erodeAt',
+			value: function erodeAt(x, y) {
+				if (x < 1 || y < 1 || x >= 3 * constants.VERTEX_SIZE - 1 || y >= 3 * constants.VERTEX_SIZE - 1) return;
+	
+				this.erodeAttribAt(x, y, "z", function (avgValue) {
+					var r = avgValue / (constants.SECTION_SIZE * 0.5);
+					return avgValue + Math.random() * r - r / 2;
+				});
+				this.erodeAttribAt(x, y, "road", function (avgValue) {
+					// narrow the road
+					if (avgValue > 0.35) {
+						// add some randomness to the edges
+						if (avgValue < 0.5) return Math.random() < 0.6 ? avgValue : 0.0;else return avgValue;
+					} else {
+						return 0.0;
+					}
+				});
+				this.erodeAttribAt(x, y, "beach", function (avgValue) {
+					// add some randomness to the edges
+					if (avgValue < 0.75) return Math.random() < 0.8 ? avgValue : 0.0;else return avgValue;
+				});
+				this.erodeAttribAt(x, y, "secondTexture", function (avgValue) {
+					// narrow the road
+					if (avgValue > 0.4) {
+						// add some randomness to the edges
+						if (avgValue < 0.5) return Math.random() < 0.6 ? avgValue : 0.0;else return 1.0;
+					} else {
+						return 0.0;
+					}
+				});
+			}
+		}, {
+			key: 'erodeAttribAt',
+			value: function erodeAttribAt(x, y, attrib, setValue) {
+				var a = [];
+				for (var dx = -1; dx <= 1; dx++) {
+					for (var dy = -1; dy <= 1; dy++) {
+						a.push(this.z[x + dx][y + dy][attrib]);
+					}
+				}
+				var h = a.reduce(function (p, v) {
+					return p + v;
+				}, 0) / a.length;
+				this.setAttribValue(x, y, attrib, setValue(h));
+			}
+	
+			// don't touch values that were copied in
+	
+		}, {
+			key: 'setAttribValue',
+			value: function setAttribValue(x, y, attrib, value) {
+				var rx = x / constants.VERTEX_SIZE | 0;
+				var ry = y / constants.VERTEX_SIZE | 0;
+				if (!this.copied[rx + "," + ry]) this.z[x][y][attrib] = value;
+			}
+		}]);
+
+		return View;
+	}();
+
+/***/ },
+/* 12 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.SECTION_BY_NAME = exports.SECTIONS = exports.Section = undefined;
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var Section = exports.Section = function Section(name, block_props, color, fillCorners, randomize) {
+		_classCallCheck(this, Section);
+	
+		this.name = name;
+		this.block_props = block_props;
+		this.color = color;
+		this.fillCorners = fillCorners;
+		this.randomize = randomize;
+	};
+	
+	var SECTIONS = exports.SECTIONS = [new Section('sea', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('land', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('mountain', { h: constants.SECTION_SIZE, r: constants.SECTION_SIZE / 5, d: 0.05, e: 8, a: 0.7 }, null, true, true), new Section('forest', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('beach', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('lake', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('river', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('town', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('town_center', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('dungeon', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('road', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, new _three2.default.Color(0.25, 0.15, 0.05), false, false)];
+	
+	var SECTION_BY_NAME = exports.SECTION_BY_NAME = {};
+	SECTIONS.forEach(function (s, index) {
+		return SECTION_BY_NAME[s.name] = index;
+	});
+
+/***/ },
+/* 13 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
 	exports.OverMap = undefined;
 	
 	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
@@ -52908,11 +53418,11 @@
 	
 	var util = _interopRequireWildcard(_util);
 	
-	var _noisejs = __webpack_require__(11);
+	var _noisejs = __webpack_require__(14);
 	
 	var _noisejs2 = _interopRequireDefault(_noisejs);
 	
-	var _aStar = __webpack_require__(12);
+	var _aStar = __webpack_require__(15);
 	
 	var _aStar2 = _interopRequireDefault(_aStar);
 	
@@ -53612,7 +54122,7 @@
 	}();
 
 /***/ },
-/* 11 */
+/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/*
@@ -53945,13 +54455,13 @@
 
 
 /***/ },
-/* 12 */
+/* 15 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var assert = __webpack_require__(13)
-	  , StringSet = __webpack_require__(18)
-	  , Heap = __webpack_require__(19)
-	  , dict = __webpack_require__(21)
+	var assert = __webpack_require__(16)
+	  , StringSet = __webpack_require__(21)
+	  , Heap = __webpack_require__(22)
+	  , dict = __webpack_require__(24)
 	
 	module.exports = aStar;
 	
@@ -54066,7 +54576,7 @@
 
 
 /***/ },
-/* 13 */
+/* 16 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
@@ -54137,7 +54647,7 @@
 	// ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 	// WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 	
-	var util = __webpack_require__(14);
+	var util = __webpack_require__(17);
 	var hasOwn = Object.prototype.hasOwnProperty;
 	var pSlice = Array.prototype.slice;
 	var functionsHaveNames = (function () {
@@ -54563,7 +55073,7 @@
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ },
-/* 14 */
+/* 17 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* WEBPACK VAR INJECTION */(function(global, process) {// Copyright Joyent, Inc. and other Node contributors.
@@ -55091,7 +55601,7 @@
 	}
 	exports.isPrimitive = isPrimitive;
 	
-	exports.isBuffer = __webpack_require__(16);
+	exports.isBuffer = __webpack_require__(19);
 	
 	function objectToString(o) {
 	  return Object.prototype.toString.call(o);
@@ -55135,7 +55645,7 @@
 	 *     prototype.
 	 * @param {function} superCtor Constructor function to inherit prototype from.
 	 */
-	exports.inherits = __webpack_require__(17);
+	exports.inherits = __webpack_require__(20);
 	
 	exports._extend = function(origin, add) {
 	  // Don't do anything if add isn't an object
@@ -55153,10 +55663,10 @@
 	  return Object.prototype.hasOwnProperty.call(obj, prop);
 	}
 	
-	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(15)))
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }()), __webpack_require__(18)))
 
 /***/ },
-/* 15 */
+/* 18 */
 /***/ function(module, exports) {
 
 	// shim for using process in browser
@@ -55281,7 +55791,7 @@
 
 
 /***/ },
-/* 16 */
+/* 19 */
 /***/ function(module, exports) {
 
 	module.exports = function isBuffer(arg) {
@@ -55292,7 +55802,7 @@
 	}
 
 /***/ },
-/* 17 */
+/* 20 */
 /***/ function(module, exports) {
 
 	if (typeof Object.create === 'function') {
@@ -55321,7 +55831,7 @@
 
 
 /***/ },
-/* 18 */
+/* 21 */
 /***/ function(module, exports) {
 
 	module.exports = Set;
@@ -55394,14 +55904,14 @@
 
 
 /***/ },
-/* 19 */
+/* 22 */
 /***/ function(module, exports, __webpack_require__) {
 
-	module.exports = __webpack_require__(20);
+	module.exports = __webpack_require__(23);
 
 
 /***/ },
-/* 20 */
+/* 23 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// Generated by CoffeeScript 1.8.0
@@ -55782,7 +56292,7 @@
 
 
 /***/ },
-/* 21 */
+/* 24 */
 /***/ function(module, exports) {
 
 	"use strict";
@@ -55889,7 +56399,7 @@
 
 
 /***/ },
-/* 22 */
+/* 25 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -55907,7 +56417,7 @@
 	
 	var _three2 = _interopRequireDefault(_three);
 	
-	var _WaterShader = __webpack_require__(23);
+	var _WaterShader = __webpack_require__(26);
 	
 	var water = _interopRequireWildcard(_WaterShader);
 	
@@ -55927,11 +56437,11 @@
 	
 	var regionModel = _interopRequireWildcard(_region);
 	
-	var _section = __webpack_require__(25);
+	var _section = __webpack_require__(12);
 	
 	var sectionDef = _interopRequireWildcard(_section);
 	
-	var _view = __webpack_require__(26);
+	var _view = __webpack_require__(11);
 	
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
@@ -56157,7 +56667,7 @@
 	}();
 
 /***/ },
-/* 23 */
+/* 26 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -56166,7 +56676,7 @@
 	
 	var _three2 = _interopRequireDefault(_three);
 	
-	var _Mirror = __webpack_require__(24);
+	var _Mirror = __webpack_require__(27);
 	
 	var mirror = _interopRequireWildcard(_Mirror);
 	
@@ -56380,7 +56890,7 @@
 	};
 
 /***/ },
-/* 24 */
+/* 27 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -56643,370 +57153,7 @@
 	};
 
 /***/ },
-/* 25 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-	
-	Object.defineProperty(exports, "__esModule", {
-		value: true
-	});
-	exports.SECTION_BY_NAME = exports.SECTIONS = exports.Section = undefined;
-	
-	var _three = __webpack_require__(1);
-	
-	var _three2 = _interopRequireDefault(_three);
-	
-	var _constants = __webpack_require__(3);
-	
-	var constants = _interopRequireWildcard(_constants);
-	
-	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
-	
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-	
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-	
-	var Section = exports.Section = function Section(name, block_props, color, fillCorners, randomize) {
-		_classCallCheck(this, Section);
-	
-		this.name = name;
-		this.block_props = block_props;
-		this.color = color;
-		this.fillCorners = fillCorners;
-		this.randomize = randomize;
-	};
-	
-	var SECTIONS = exports.SECTIONS = [new Section('sea', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('land', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('mountain', { h: constants.SECTION_SIZE, r: constants.SECTION_SIZE / 5, d: 0.05, e: 8, a: 0.7 }, null, true, true), new Section('forest', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('beach', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('lake', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('river', { h: -5, r: 2, d: 0.05, e: 8, a: 1.5 }, null, true, false), new Section('town', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('town_center', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('dungeon', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, null, true, false), new Section('road', { h: 3, r: 0.5, d: 0.5, e: 1, a: 0.7 }, new _three2.default.Color(0.25, 0.15, 0.05), false, false)];
-	
-	var SECTION_BY_NAME = exports.SECTION_BY_NAME = {};
-	SECTIONS.forEach(function (s, index) {
-		return SECTION_BY_NAME[s.name] = index;
-	});
-
-/***/ },
-/* 26 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-	
-	Object.defineProperty(exports, "__esModule", {
-		value: true
-	});
-	exports.View = undefined;
-	
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-	
-	var _three = __webpack_require__(1);
-	
-	var _three2 = _interopRequireDefault(_three);
-	
-	var _jquery = __webpack_require__(2);
-	
-	var _jquery2 = _interopRequireDefault(_jquery);
-	
-	var _constants = __webpack_require__(3);
-	
-	var constants = _interopRequireWildcard(_constants);
-	
-	var _util = __webpack_require__(5);
-	
-	var util = _interopRequireWildcard(_util);
-	
-	var _section = __webpack_require__(25);
-	
-	var sectionDef = _interopRequireWildcard(_section);
-	
-	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
-	
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-	
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-	
-	var DEFAULT_POINT = { z: 0, type: 0, road: 0, secondTexture: 0, beach: 0 };
-	/**
-	 * All displayed region data in memory.
-	 */
-	
-	var View = exports.View = function () {
-		function View() {
-			_classCallCheck(this, View);
-	
-			this.reset();
-		}
-	
-		_createClass(View, [{
-			key: 'reset',
-			value: function reset() {
-				this.copied = {};
-				this.generatedCount = 0;
-				this.z = [];
-	
-				// init height map
-				for (var x = 0; x < 3 * constants.VERTEX_SIZE; x++) {
-					var a = [];
-					this.z.push(a);
-					for (var y = 0; y < 3 * constants.VERTEX_SIZE; y++) {
-						a.push(this.defaultPoint());
-					}
-				}
-			}
-		}, {
-			key: 'compressFloat',
-			value: function compressFloat(f) {
-				return Math.round(f * 1000) / 1000.0;
-			}
-		}, {
-			key: 'save',
-			value: function save(rx, ry) {
-				console.log("Creating data file " + name + "...");
-				var d = [];
-				for (var x = 0; x < constants.VERTEX_SIZE; x++) {
-					for (var y = 0; y < constants.VERTEX_SIZE; y++) {
-						var p = this.z[constants.VERTEX_SIZE + x][constants.VERTEX_SIZE + y];
-						d.push(this.compressFloat(p.z));
-						d.push(p.type);
-						d.push(this.compressFloat(p.road));
-						d.push(this.compressFloat(p.beach));
-						d.push(this.compressFloat(p.secondTexture));
-					}
-				}
-	
-				var name = "region" + rx.toString(16) + ry.toString(16);
-				var region = {
-					region: d,
-					version: 1,
-					name: name,
-					x: rx,
-					y: ry
-				};
-	
-				console.log("Uploading " + name + "...");
-				_jquery2.default.ajax({
-					type: 'POST',
-					url: "http://localhost:9090/cgi-bin/upload.py",
-					data: "name=" + name + "&expanded=1&file=" + JSON.stringify(region),
-					success: function success() {
-						console.log("Success!");
-					},
-					error: function error(_error) {
-						console.log("error: ", _error);
-					},
-					dataType: "text/json"
-				});
-				console.log("Stored on server.");
-			}
-		}, {
-			key: 'copy',
-			value: function copy(expandedRegion, rx, ry) {
-				var i = 0;
-				var x = 0;
-				var y = 0;
-				while (i < expandedRegion.region.length) {
-					var p = this.z[rx * constants.VERTEX_SIZE + x][ry * constants.VERTEX_SIZE + y];
-	
-					p.z = expandedRegion.region[i++];
-					p.type = expandedRegion.region[i++];
-					p.road = expandedRegion.region[i++];
-					p.beach = expandedRegion.region[i++];
-					p.secondTexture = expandedRegion.region[i++];
-	
-					y++;
-					if (y >= constants.VERTEX_SIZE) {
-						y = 0;
-						x++;
-					}
-				}
-				this.copied[rx + "," + ry] = 1;
-			}
-		}, {
-			key: 'display',
-			value: function display(region, rx, ry) {
-				this.generatedCount++;
-				// create height map
-				for (var x = 0; x < constants.REGION_SIZE; x++) {
-					for (var y = 0; y < constants.REGION_SIZE; y++) {
-						this.makeSection(rx, ry, x, y, region.region[x][y]);
-					}
-				}
-			}
-		}, {
-			key: 'finish',
-			value: function finish(setZ) {
-				if (this.generatedCount > 0) {
-					// draw edges
-					for (var x = 0; x < 3 * constants.VERTEX_SIZE; x += constants.SECTION_SIZE) {
-						for (var y = 0; y < 3 * constants.VERTEX_SIZE; y += constants.SECTION_SIZE) {
-							var n = this.z[x][y - constants.SECTION_SIZE];
-							var s = this.z[x][y + constants.SECTION_SIZE];
-							var w = x > constants.SECTION_SIZE ? this.z[x - constants.SECTION_SIZE][y] : null;
-							var e = x < 3 * constants.VERTEX_SIZE - constants.SECTION_SIZE ? this.z[x + constants.SECTION_SIZE][y] : null;
-							var dx = -1;
-							var dy = -1;
-							var type = null;
-							if (this.isSame(n, e)) {
-								dx = constants.SECTION_SIZE / 2;
-								dy = 0;
-								type = e.type;
-							}
-							if (this.isSame(s, e)) {
-								dx = constants.SECTION_SIZE / 2;
-								dy = constants.SECTION_SIZE / 2;
-								type = e.type;
-							}
-							if (this.isSame(n, w)) {
-								dx = 0;
-								dy = 0;
-								type = w.type;
-							}
-							if (this.isSame(s, w)) {
-								dx = 0;
-								dy = constants.SECTION_SIZE / 2;
-								type = w.type;
-							}
-	
-							if (type) this.makeSubSection(x, y, type, dx, dy);
-						}
-					}
-	
-					// apply erosion
-					for (var i = 0; i < 8; i++) {
-						this.erode();
-					}
-				}
-	
-				// move mesh points as in height map
-				for (var _x = 0; _x < 3 * constants.VERTEX_SIZE; _x++) {
-					for (var _y = 0; _y < 3 * constants.VERTEX_SIZE; _y++) {
-						setZ(_x, _y, this.z[_x][_y] || this.defaultPoint());
-					}
-				}
-			}
-		}, {
-			key: 'defaultPoint',
-			value: function defaultPoint() {
-				return Object.assign({}, DEFAULT_POINT);
-			}
-		}, {
-			key: 'isSame',
-			value: function isSame(a, b) {
-				return a && b && a.type == b.type && sectionDef.SECTIONS[a.type].fillCorners;
-			}
-		}, {
-			key: 'makeSection',
-			value: function makeSection(rx, ry, x, y, sectionType) {
-				for (var xx = 0; xx < constants.SECTION_SIZE; xx++) {
-					for (var yy = 0; yy < constants.SECTION_SIZE; yy++) {
-						var px = rx * constants.VERTEX_SIZE + x * constants.SECTION_SIZE + xx;
-						var py = ry * constants.VERTEX_SIZE + y * constants.SECTION_SIZE + yy;
-						var point = this.z[px][py];
-						point.z = this.calcZ(sectionType);
-						point.type = sectionType;
-	
-						var dx = Math.abs(xx - constants.SECTION_SIZE / 2) / (constants.SECTION_SIZE / 2);
-						var dy = Math.abs(yy - constants.SECTION_SIZE / 2) / (constants.SECTION_SIZE / 2);
-						var d = Math.sqrt(dx * dx + dy * dy); // distance from middle of the section (0 - 1)
-						var r = Math.max(1.5 - d, 0); // % of point being this type
-	
-						point.road = this.isOfType(sectionType, 'road') ? 1.0 : 0.0;
-						point.beach = this.isOfType(sectionType, 'beach') || this.isOfType(sectionType, 'sea') ? 1.0 : 0.0;
-						point.secondTexture = (this.isOfType(sectionType, 'land') || this.isOfType(sectionType, 'forest')) && Math.random() >= 0.5 ? 1 : 0;
-						point.r = r;
-					}
-				}
-			}
-		}, {
-			key: 'isOfType',
-			value: function isOfType(sectionType, sectionTypeName) {
-				return sectionType === sectionDef.SECTION_BY_NAME[sectionTypeName];
-			}
-		}, {
-			key: 'makeSubSection',
-			value: function makeSubSection(x, y, sectionType, dx, dy) {
-				for (var xx = 0; xx < constants.SECTION_SIZE / 2; xx++) {
-					for (var yy = 0; yy < constants.SECTION_SIZE / 2; yy++) {
-						this.setAttribValue(x + xx + dx, y + yy + dy, 'z', this.calcZ(sectionType));
-					}
-				}
-			}
-		}, {
-			key: 'calcZ',
-			value: function calcZ(sectionType) {
-				var p = sectionDef.SECTIONS[sectionType].block_props;
-				return Math.random() * p.r - p.r * p.d + p.h;
-			}
-		}, {
-			key: 'erode',
-			value: function erode() {
-				for (var x = 1; x < 3 * constants.VERTEX_SIZE - 1; x++) {
-					for (var y = 1; y < 3 * constants.VERTEX_SIZE - 1; y++) {
-						this.erodeAt(x, y);
-					}
-				}
-			}
-		}, {
-			key: 'erodeAt',
-			value: function erodeAt(x, y) {
-				if (x < 1 || y < 1 || x >= 3 * constants.VERTEX_SIZE - 1 || y >= 3 * constants.VERTEX_SIZE - 1) return;
-	
-				this.erodeAttribAt(x, y, "z", function (avgValue) {
-					var r = avgValue / (constants.SECTION_SIZE * 0.5);
-					return avgValue + Math.random() * r - r / 2;
-				});
-				this.erodeAttribAt(x, y, "road", function (avgValue) {
-					// narrow the road
-					if (avgValue > 0.35) {
-						// add some randomness to the edges
-						if (avgValue < 0.5) return Math.random() < 0.6 ? avgValue : 0.0;else return avgValue;
-					} else {
-						return 0.0;
-					}
-				});
-				this.erodeAttribAt(x, y, "beach", function (avgValue) {
-					// add some randomness to the edges
-					if (avgValue < 0.75) return Math.random() < 0.8 ? avgValue : 0.0;else return avgValue;
-				});
-				this.erodeAttribAt(x, y, "secondTexture", function (avgValue) {
-					// narrow the road
-					if (avgValue > 0.4) {
-						// add some randomness to the edges
-						if (avgValue < 0.5) return Math.random() < 0.6 ? avgValue : 0.0;else return 1.0;
-					} else {
-						return 0.0;
-					}
-				});
-			}
-		}, {
-			key: 'erodeAttribAt',
-			value: function erodeAttribAt(x, y, attrib, setValue) {
-				var a = [];
-				for (var dx = -1; dx <= 1; dx++) {
-					for (var dy = -1; dy <= 1; dy++) {
-						a.push(this.z[x + dx][y + dy][attrib]);
-					}
-				}
-				var h = a.reduce(function (p, v) {
-					return p + v;
-				}, 0) / a.length;
-				this.setAttribValue(x, y, attrib, setValue(h));
-			}
-	
-			// don't touch values that were copied in
-	
-		}, {
-			key: 'setAttribValue',
-			value: function setAttribValue(x, y, attrib, value) {
-				var rx = x / constants.VERTEX_SIZE | 0;
-				var ry = y / constants.VERTEX_SIZE | 0;
-				if (!this.copied[rx + "," + ry]) this.z[x][y][attrib] = value;
-			}
-		}]);
-
-		return View;
-	}();
-
-/***/ },
-/* 27 */
+/* 28 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -57020,20 +57167,19 @@
 	
 	var _three2 = _interopRequireDefault(_three);
 	
+	var _util = __webpack_require__(5);
+	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var SkyBox = exports.SkyBox = function SkyBox() {
-		_classCallCheck(this, SkyBox);
+	var SkyBox = exports.SkyBox = function SkyBox(scene) {
+		var _this = this;
 	
-		// load skybox
-		var cubeMap = new _three2.default.CubeTexture([]);
-		cubeMap.format = _three2.default.RGBFormat;
+		_classCallCheck(this, SkyBox);
 	
 		var loader = new _three2.default.ImageLoader();
 		loader.load('../images/skyboxsun25degtest.png', function (image) {
-	
 			var getSide = function getSide(x, y) {
 	
 				var size = 1024;
@@ -57048,164 +57194,26 @@
 				return canvas;
 			};
 	
-			cubeMap.images[0] = getSide(2, 1); // px
-			cubeMap.images[1] = getSide(0, 1); // nx
-			cubeMap.images[2] = getSide(1, 0); // py
-			cubeMap.images[3] = getSide(1, 2); // ny
-			cubeMap.images[4] = getSide(1, 1); // pz
-			cubeMap.images[5] = getSide(3, 1); // nz
-			cubeMap.needsUpdate = true;
+			var canvases = [getSide(2, 1), getSide(0, 1), getSide(1, 0), getSide(1, 2), getSide(1, 1), getSide(3, 1)];
+	
+			var materialArray = [];
+			for (var i = 0; i < 6; i++) {
+				var tex = new _three2.default.Texture(canvases[i]);
+				tex.format = _three2.default.RGBFormat;
+				tex.needsUpdate = true;
+				materialArray.push(new _three2.default.MeshBasicMaterial({
+					map: tex,
+					side: _three2.default.BackSide,
+					depthWrite: false
+				}));
+			}
+	
+			_this.skyBox = new _three2.default.Mesh(new _three2.default.BoxGeometry(90000, 90000, 90000), new _three2.default.MeshFaceMaterial(materialArray));
+			_this.skyBox.rotation.x = Math.PI / 2;
+	
+			scene.add(_this.skyBox);
 		});
-	
-		var cubeShader = _three2.default.ShaderLib['cube'];
-		cubeShader.uniforms['tCube'].value = cubeMap;
-	
-		var skyBoxMaterial = new _three2.default.ShaderMaterial({
-			fragmentShader: cubeShader.fragmentShader,
-			vertexShader: cubeShader.vertexShader,
-			uniforms: cubeShader.uniforms,
-			depthWrite: false,
-			side: _three2.default.BackSide
-		});
-	
-		this.skyBox = new _three2.default.Mesh(new _three2.default.BoxGeometry(90000, 90000, 90000), skyBoxMaterial);
 	};
-
-/***/ },
-/* 28 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-	
-	Object.defineProperty(exports, "__esModule", {
-		value: true
-	});
-	exports.Expander = undefined;
-	
-	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-	
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-	
-	var _view = __webpack_require__(26);
-	
-	var _jquery = __webpack_require__(2);
-	
-	var _jquery2 = _interopRequireDefault(_jquery);
-	
-	var _constants = __webpack_require__(3);
-	
-	var constants = _interopRequireWildcard(_constants);
-	
-	var _util = __webpack_require__(5);
-	
-	var util = _interopRequireWildcard(_util);
-	
-	var _region = __webpack_require__(9);
-	
-	var regionModel = _interopRequireWildcard(_region);
-	
-	var _section = __webpack_require__(25);
-	
-	var sectionDef = _interopRequireWildcard(_section);
-	
-	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
-	
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-	
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-	
-	var Expander = exports.Expander = function () {
-		function Expander(onSuccess) {
-			_classCallCheck(this, Expander);
-	
-			this.view = new _view.View();
-			this.rx = 0;
-			this.ry = 0;
-			this.onSuccess = onSuccess;
-		}
-	
-		_createClass(Expander, [{
-			key: 'saveAllExpandedRegions',
-			value: function saveAllExpandedRegions() {
-				(0, _jquery2.default)("#saving-regions").show();
-				this.workOnRegion();
-			}
-		}, {
-			key: 'workOnRegion',
-			value: function workOnRegion() {
-				(0, _jquery2.default)("#saving-regions-log").append(".");
-				console.log("Saving region " + this.rx + "," + this.ry + "...");
-				this.view.reset();
-				this.loadRegion();
-			}
-		}, {
-			key: 'loadRegion',
-			value: function loadRegion() {
-				var _this = this;
-	
-				var index = arguments.length <= 0 || arguments[0] === undefined ? 0 : arguments[0];
-	
-				if (index < constants.REGION_OFFSETS.length) {
-					(function () {
-						// load regions into the view
-	
-						var _constants$REGION_OFF = _slicedToArray(constants.REGION_OFFSETS[index], 2);
-	
-						var dx = _constants$REGION_OFF[0];
-						var dy = _constants$REGION_OFF[1];
-	
-						if (_this.rx + dx >= 0 && _this.ry + dy >= 0 && _this.rx + dx < constants.REGION_COUNT && _this.ry + dy < constants.REGION_COUNT) {
-							_this.loadExpandedOrRegularRegion(_this.rx + dx, _this.ry + dy, function (expandedRegion) {
-								console.log("COPYing region " + (_this.rx + dx) + "," + (_this.ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
-								_this.view.copy(expandedRegion, dx + 1, dy + 1);
-								_this.loadRegion(index + 1);
-							}, function (region) {
-								console.log("MAKEing region " + (_this.rx + dx) + "," + (_this.ry + dy) + " at " + (dx + 1) + "," + (dy + 1));
-								_this.view.display(region, dx + 1, dy + 1);
-								_this.loadRegion(index + 1);
-							});
-						} else {
-							_this.loadRegion(index + 1);
-						}
-					})();
-				} else {
-					this.view.finish(function (x, y, point) {});
-					this.view.save(this.rx, this.ry);
-					this.rx++;
-					if (this.rx >= constants.REGION_SIZE) {
-						this.rx = 0;
-						this.ry++;
-						if (this.ry >= constants.REGION_SIZE) {
-							(0, _jquery2.default)("#saving-regions").hide();
-							this.onSuccess();
-							return;
-						}
-					}
-					this.workOnRegion();
-				}
-			}
-		}, {
-			key: 'loadExpandedOrRegularRegion',
-			value: function loadExpandedOrRegularRegion(rx, ry, onSuccess, onFailure) {
-				var name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json";
-				_jquery2.default.ajax({
-					type: 'GET',
-					dataType: 'json',
-					url: name + "?cb=" + window.cb,
-					success: function success(expandedRegion) {
-						onSuccess(expandedRegion);
-					},
-					error: function error(err) {
-						regionModel.Region.load(rx, ry, function (region) {
-							onFailure(region);
-						});
-					}
-				});
-			}
-		}]);
-
-		return Expander;
-	}();
 
 /***/ }
 /******/ ]);

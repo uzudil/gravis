@@ -76,7 +76,9 @@ class Gravis {
 		this.width = this.height * constants.ASPECT_RATIO;
 
 		window.models = this.models = models;
+
 		this.camera = new THREE.PerspectiveCamera( 45, constants.ASPECT_RATIO, 1, constants.FAR_DIST );
+		this.camera.up = new THREE.Vector3( 0, 0, 1 );
 		//let orthoDiv = this.width / (1 * constants.REGION_SIZE * constants.SECTION_SIZE);
 		//this.camera = new THREE.OrthographicCamera( this.width / -orthoDiv, this.width / orthoDiv, this.height / orthoDiv, this.height / -orthoDiv, 1, constants.FAR_DIST );
 
@@ -104,7 +106,7 @@ class Gravis {
 
 		this.prevTime = 0;
 
-		this.scene.add(new skybox.SkyBox().skyBox);
+		this.skybox = new skybox.SkyBox(this.scene);
 
 		$("body").append( this.renderer.domElement );
 		$("canvas").click((event) => {
@@ -140,13 +142,23 @@ class Gravis {
 		this.overmap = new overmap.OverMap(this);
 		this.regionEditor = new regioneditor.RegionEditor(this);
 
-		//this.camera.rotation.set( 0, 0, 0 );
-		this.camera.position.set(100, 100, 100);
-		this.camera.lookAt(constants.ORIGIN);
+		// camera rotation
+		this.camera.rotation.set( 0, 0, 0 );
 
-		this.regionEditor.obj.rotation.set(-Math.PI / 2, 0, 0);
-		//this.obj.rotation.set(-Math.PI / 4, 0, Math.PI / 4);
-		//this.obj.position.z = -500;
+		this.pitch = new THREE.Object3D();
+		this.pitch.rotation.x = Math.PI / 4;
+		this.pitch.add(this.camera);
+
+		this.roll = new THREE.Object3D();
+		this.roll.add(this.pitch);
+
+		// yaw
+		this.yaw = new THREE.Object3D();
+		this.yaw.add(this.roll);
+		this.yaw.rotation.z = Math.PI;
+		this.scene.add(this.yaw);
+
+		this.yaw.position.set(0, 0, 45);
 
 		this.controller.start();
 
@@ -178,5 +190,5 @@ class Gravis {
 }
 
 $(document).ready(function() {
-	window.eniz = new Gravis();
+	window.gravis = new Gravis();
 });
