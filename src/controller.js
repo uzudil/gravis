@@ -39,11 +39,11 @@ export class Controller {
 		});
 		$("canvas").mousewheel((event) => {
 			let s;
-			if(event.deltaY > 0) s = this.gravis.regionEditor.obj.scale.x * 1.25;
-			else s = this.gravis.regionEditor.obj.scale.x / 1.25;
+			if(event.deltaY > 0) s = this.gravis.viewer.obj.scale.x * 1.25;
+			else s = this.gravis.viewer.obj.scale.x / 1.25;
 			if(s < constants.EDITOR_SCALE) s = constants.EDITOR_SCALE;
 			if(s > constants.EDITOR_SCALE * 10) s = constants.EDITOR_SCALE * 10;
-			this.gravis.regionEditor.obj.scale.set(s, s, s);
+			this.gravis.viewer.obj.scale.set(s, s, s);
 		});
 		$("canvas").mousemove((event) => {
 			let mx = event.originalEvent.movementX;
@@ -77,22 +77,22 @@ export class Controller {
 					case 87:
 						this.ry--;
 						this.fw = this.bw = this.left = this.right = false;
-						this.gravis.regionEditor.edit(this.rx, this.ry);
+						this.gravis.viewer.edit(this.rx, this.ry);
 						break;
 					case 83:
 						this.ry++;
 						this.fw = this.bw = this.left = this.right = false;
-						this.gravis.regionEditor.edit(this.rx, this.ry);
+						this.gravis.viewer.edit(this.rx, this.ry);
 						break;
 					case 65:
 						this.rx--;
 						this.fw = this.bw = this.left = this.right = false;
-						this.gravis.regionEditor.edit(this.rx, this.ry);
+						this.gravis.viewer.edit(this.rx, this.ry);
 						break;
 					case 68:
 						this.rx++;
 						this.fw = this.bw = this.left = this.right = false;
-						this.gravis.regionEditor.edit(this.rx, this.ry);
+						this.gravis.viewer.edit(this.rx, this.ry);
 						break;
 					case 79:
 						new Expander(() => {}).saveAllExpandedRegions();
@@ -114,7 +114,7 @@ export class Controller {
 						break;
 					case 79:
 						if($("#region_buttons").is(":visible")) {
-							this.gravis.regionEditor.view.save(this.rx, this.ry);
+							this.gravis.viewer.view.save(this.rx, this.ry);
 						}
 						break;
 				}
@@ -136,7 +136,7 @@ export class Controller {
 
 	load() {
 		this.gravis.overmap.hide();
-		this.gravis.regionEditor.edit(this.rx, this.ry);
+		this.gravis.viewer.edit(this.rx, this.ry);
 		$("#overmap_buttons").hide();
 		$("#region_buttons").show();
 	}

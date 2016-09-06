@@ -1,0 +1,31 @@
+<html>
+<head>
+    <title>gravis</title>
+    <link rel="stylesheet" type="text/css" href="css/gravis.css">
+</head>
+<body>
+<div id="loading"><div id="progress"><div id="progress-value"></div></div></div>
+<div id="alert">
+    <div id="ui_loading_models" class="alert wait-alert localized">Loading models...</div>
+    <div id="ui_loading_game" class="alert wait-alert localized">Loading game...</div>
+</div>
+<div id="overmap_buttons">
+    <select id="noise">
+        <option>radial</option>
+        <option>perlin</option>
+        <option>simplex</option>
+    </select>
+    <button id="accept">Save Map</button>
+    <button id="reject">New Map</button>
+    <button id="load">Load last map</button>
+</div>
+<div id="region_buttons">
+    <div id="pos">Region: <span id="rx"></span>,<span id="ry"></span></div>
+</div>
+<div id="saving-regions">
+    <h2>Saving regions</h2>
+    <div id="saving-regions-log"></div>
+</div>
+<script src="dist/gravis.js"></script>
+</body>
+</html>

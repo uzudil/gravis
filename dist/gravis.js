@@ -84,6 +84,14 @@
 	
 	var regioneditor = _interopRequireWildcard(_regioneditor);
 	
+	var _game = __webpack_require__(29);
+	
+	var game = _interopRequireWildcard(_game);
+	
+	var _game_controller = __webpack_require__(30);
+	
+	var game_controller = _interopRequireWildcard(_game_controller);
+	
 	var _skybox = __webpack_require__(28);
 	
 	var skybox = _interopRequireWildcard(_skybox);
@@ -95,13 +103,15 @@
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
 	var Gravis = function () {
-		function Gravis() {
+		function Gravis(view, ctrl) {
 			var _this = this;
 	
 			_classCallCheck(this, Gravis);
 	
 			console.log('Gravis (c) 2016 v' + constants.VERSION);
 			window.cb = "" + constants.VERSION;
+			this.viewMaker = view;
+			this.controllerMaker = ctrl;
 			new model.Models(function (models) {
 				_this.loadTextures(function () {
 					_this.loadShaders(function () {
@@ -268,9 +278,9 @@
 				this.dirLight2.position.set(1, -1, .8);
 				this.scene.add(this.dirLight2);
 	
-				this.controller = new controller.Controller(this);
+				this.controller = this.controllerMaker(this);
 				this.overmap = new overmap.OverMap(this);
-				this.regionEditor = new regioneditor.RegionEditor(this);
+				this.viewer = this.viewMaker(this);
 	
 				// camera rotation
 				this.camera.rotation.set(0, 0, 0);
@@ -306,7 +316,7 @@
 				var delta = (time - this.prevTime) / 1000;
 				this.prevTime = time;
 	
-				this.regionEditor.update(time, delta);
+				this.viewer.update(time, delta);
 	
 				this.controller.update(delta);
 				this.renderer.render(this.scene, this.camera);
@@ -324,7 +334,24 @@
 	}();
 	
 	(0, _jquery2.default)(document).ready(function () {
-		window.gravis = new Gravis();
+		var view = void 0,
+		    ctrl = void 0;
+		if (window.location.pathname.indexOf("editor") >= 0) {
+			view = function view(gravis) {
+				return new regioneditor.RegionEditor(gravis);
+			};
+			ctrl = function ctrl(gravis) {
+				return new controller.Controller(gravis);
+			};
+		} else {
+			view = function view(gravis) {
+				return new game.Game(gravis);
+			};
+			ctrl = function ctrl(gravis) {
+				return new game_controller.GameController(gravis);
+			};
+		}
+		window.gravis = new Gravis(view, ctrl);
 	});
 
 /***/ },
@@ -52450,10 +52477,10 @@
 			});
 			(0, _jquery2.default)("canvas").mousewheel(function (event) {
 				var s = void 0;
-				if (event.deltaY > 0) s = _this.gravis.regionEditor.obj.scale.x * 1.25;else s = _this.gravis.regionEditor.obj.scale.x / 1.25;
+				if (event.deltaY > 0) s = _this.gravis.viewer.obj.scale.x * 1.25;else s = _this.gravis.viewer.obj.scale.x / 1.25;
 				if (s < constants.EDITOR_SCALE) s = constants.EDITOR_SCALE;
 				if (s > constants.EDITOR_SCALE * 10) s = constants.EDITOR_SCALE * 10;
-				_this.gravis.regionEditor.obj.scale.set(s, s, s);
+				_this.gravis.viewer.obj.scale.set(s, s, s);
 			});
 			(0, _jquery2.default)("canvas").mousemove(function (event) {
 				var mx = event.originalEvent.movementX;
@@ -52487,22 +52514,22 @@
 						case 87:
 							_this.ry--;
 							_this.fw = _this.bw = _this.left = _this.right = false;
-							_this.gravis.regionEditor.edit(_this.rx, _this.ry);
+							_this.gravis.viewer.edit(_this.rx, _this.ry);
 							break;
 						case 83:
 							_this.ry++;
 							_this.fw = _this.bw = _this.left = _this.right = false;
-							_this.gravis.regionEditor.edit(_this.rx, _this.ry);
+							_this.gravis.viewer.edit(_this.rx, _this.ry);
 							break;
 						case 65:
 							_this.rx--;
 							_this.fw = _this.bw = _this.left = _this.right = false;
-							_this.gravis.regionEditor.edit(_this.rx, _this.ry);
+							_this.gravis.viewer.edit(_this.rx, _this.ry);
 							break;
 						case 68:
 							_this.rx++;
 							_this.fw = _this.bw = _this.left = _this.right = false;
-							_this.gravis.regionEditor.edit(_this.rx, _this.ry);
+							_this.gravis.viewer.edit(_this.rx, _this.ry);
 							break;
 						case 79:
 							new _expander.Expander(function () {}).saveAllExpandedRegions();
@@ -52524,7 +52551,7 @@
 							break;
 						case 79:
 							if ((0, _jquery2.default)("#region_buttons").is(":visible")) {
-								_this.gravis.regionEditor.view.save(_this.rx, _this.ry);
+								_this.gravis.viewer.view.save(_this.rx, _this.ry);
 							}
 							break;
 					}
@@ -52556,7 +52583,7 @@
 			key: 'load',
 			value: function load() {
 				this.gravis.overmap.hide();
-				this.gravis.regionEditor.edit(this.rx, this.ry);
+				this.gravis.viewer.edit(this.rx, this.ry);
 				(0, _jquery2.default)("#overmap_buttons").hide();
 				(0, _jquery2.default)("#region_buttons").show();
 			}
@@ -57214,6 +57241,562 @@
 			scene.add(_this.skyBox);
 		});
 	};
+
+/***/ },
+/* 29 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.Game = undefined;
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _WaterShader = __webpack_require__(26);
+	
+	var water = _interopRequireWildcard(_WaterShader);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	var _region = __webpack_require__(9);
+	
+	var regionModel = _interopRequireWildcard(_region);
+	
+	var _section = __webpack_require__(12);
+	
+	var sectionDef = _interopRequireWildcard(_section);
+	
+	var _region_cache = __webpack_require__(31);
+	
+	var region_cache = _interopRequireWildcard(_region_cache);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var WATER_Z = 1.5;
+	
+	var Game = exports.Game = function () {
+		function Game(gravis) {
+			_classCallCheck(this, Game);
+	
+			this.gravis = gravis;
+			this.regionCache = new region_cache.RegionCache();
+	
+			this.obj = new _three2.default.Object3D();
+			this.gravis.scene.add(this.obj);
+	
+			this.size = constants.VERTEX_SIZE;
+			this.mesh = new _three2.default.Mesh(new _three2.default.PlaneBufferGeometry(this.size, this.size, this.size, this.size), new _three2.default.ShaderMaterial({
+				uniforms: {
+					texture_grass: { type: "t", value: gravis.tex.classicGrass1 },
+					texture_grass2: { type: "t", value: gravis.tex.classicGrass2 },
+					texture_rock: { type: "t", value: gravis.tex.ground1 },
+					texture_road: { type: "t", value: gravis.tex.road2 },
+					texture_sand: { type: "t", value: gravis.tex.sand1 }
+				},
+				vertexShader: gravis.shaders.map[0],
+				fragmentShader: gravis.shaders.map[1]
+			}));
+	
+			// adjust UVs
+			for (var i = 0; i < this.mesh.geometry.getAttribute("uv").array.length; i++) {
+				this.mesh.geometry.getAttribute("uv").array[i] *= constants.SECTION_SIZE;
+			}
+			this.mesh.geometry.getAttribute("uv").needsUpdate = true;
+	
+			// a temporary geometry used for loading data
+			// it's easier to adjust vertices here and then copy them to the buffergeo than to directly change it :-(
+			this.tmp_geo = new _three2.default.PlaneGeometry(this.size, this.size, this.size, this.size);
+			this.vertexGrid = {};
+			var _iteratorNormalCompletion = true;
+			var _didIteratorError = false;
+			var _iteratorError = undefined;
+	
+			try {
+				for (var _iterator = this.tmp_geo.vertices[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+					var v = _step.value;
+	
+					// map -1 to 0, 1 to constants.VERTEX_SIZE
+					var xp = v.x + constants.VERTEX_SIZE / 2;
+					var yp = v.y + constants.VERTEX_SIZE / 2;
+					this.vertexGrid[xp + "," + yp] = v;
+				}
+			} catch (err) {
+				_didIteratorError = true;
+				_iteratorError = err;
+			} finally {
+				try {
+					if (!_iteratorNormalCompletion && _iterator.return) {
+						_iterator.return();
+					}
+				} finally {
+					if (_didIteratorError) {
+						throw _iteratorError;
+					}
+				}
+			}
+	
+			this.obj.add(this.mesh);
+	
+			// custom attribute for how 'road' a vertex is
+			this.road = new Float32Array(this.mesh.geometry.getAttribute("position").array.length);
+			this.mesh.geometry.addAttribute('road', new _three2.default.BufferAttribute(this.road, 1));
+			this.beach = new Float32Array(this.mesh.geometry.getAttribute("position").array.length);
+			this.mesh.geometry.addAttribute('beach', new _three2.default.BufferAttribute(this.beach, 1));
+			this.secondTexture = new Float32Array(this.mesh.geometry.getAttribute("position").array.length);
+			this.mesh.geometry.addAttribute('secondTexture', new _three2.default.BufferAttribute(this.secondTexture, 1));
+	
+			this.water = new _three2.default.Water(this.gravis.renderer, this.gravis.camera, this.gravis.scene, {
+				textureWidth: 512,
+				textureHeight: 512,
+				waterNormals: this.gravis.tex.waterNormals,
+				alpha: 0.5,
+				sunDirection: this.gravis.dirLight1.position.clone().normalize(),
+				// sunDirection: light.position.clone().normalize(),
+				sunColor: 0xffffff,
+				waterColor: 0x88eeff,
+				//waterColor: 0x001e0f,
+				distortionScale: 20.0
+			});
+	
+			this.mirrorMesh = new _three2.default.Mesh(new _three2.default.PlaneBufferGeometry(this.size, this.size), this.water.material);
+	
+			this.mirrorMesh.add(this.water);
+			this.mirrorMesh.position.z = WATER_Z;
+			this.obj.add(this.mirrorMesh);
+		}
+	
+		_createClass(Game, [{
+			key: 'update',
+			value: function update(time, delta) {
+				this.water.material.uniforms.time.value += 1.0 / 60.0;
+				this.water.render();
+			}
+		}, {
+			key: 'drawAt',
+			value: function drawAt(x, y) {
+				var _this = this;
+	
+				var regionX = x / constants.VERTEX_SIZE | 0;
+				var regionY = y / constants.VERTEX_SIZE | 0;
+				// load surrounding regions
+				this.regionCache.load(regionX, regionY, function () {
+					_this.displayAt(x, y);
+				});
+			}
+		}, {
+			key: 'displayAt',
+			value: function displayAt(x, y) {
+				var px = void 0,
+				    py = void 0,
+				    rx = void 0,
+				    ry = void 0;
+				for (var dx = 0; dx < constants.VERTEX_SIZE; dx++) {
+					for (var dy = 0; dy < constants.VERTEX_SIZE; dy++) {
+						px = x - constants.VERTEX_SIZE / 2 + dx;
+						rx = px / constants.VERTEX_SIZE | 0;
+						if (rx < 0) rx += constants.REGION_COUNT;
+						if (rx > constants.REGION_COUNT - 1) rx -= constants.REGION_COUNT;
+	
+						py = y - constants.VERTEX_SIZE / 2 + dy;
+						ry = py / constants.VERTEX_SIZE | 0;
+						if (ry < 0) ry += constants.REGION_COUNT;
+						if (ry > constants.REGION_COUNT - 1) ry -= constants.REGION_COUNT;
+	
+						var p = this.regionCache.get(rx, ry, px % constants.VERTEX_SIZE | 0, py % constants.VERTEX_SIZE | 0);
+						if (dx == 0 && dy == 0 || dx == 0 && dy == constants.VERTEX_SIZE - 1 || dx == constants.VERTEX_SIZE - 1 && dy == 0 || dx == constants.VERTEX_SIZE - 1 && dy == constants.VERTEX_SIZE - 1) {
+							console.log("pos: " + dx + "," + dy + " point: ", p);
+						}
+						this.copyToVertex(dx, dy, p);
+					}
+				}
+				this.initAttributes();
+			}
+		}, {
+			key: 'copyToVertex',
+			value: function copyToVertex(vx, vy, point) {
+				var v = this.vertexGrid[vx + "," + vy];
+				if (v) {
+					v.z = point.z;
+					v.section = point.type;
+					v.road = point.road;
+					v.beach = point.beach;
+					v.secondTexture = point.secondTexture;
+					v.vx = vx;
+					v.vy = vy;
+				}
+			}
+		}, {
+			key: 'initAttributes',
+			value: function initAttributes() {
+				// copy the vertices into the buffergeometry
+				this.mesh.geometry.getAttribute("position").copyVector3sArray(this.tmp_geo.vertices);
+				this.mesh.geometry.getAttribute("position").needsUpdate = true;
+				this.mesh.geometry.getAttribute("road").copyArray(this.tmp_geo.vertices.map(function (v) {
+					return v.road;
+				}));
+				this.mesh.geometry.getAttribute("road").needsUpdate = true;
+				this.mesh.geometry.getAttribute("beach").copyArray(this.tmp_geo.vertices.map(function (v) {
+					return v.beach;
+				}));
+				this.mesh.geometry.getAttribute("beach").needsUpdate = true;
+				this.mesh.geometry.getAttribute("secondTexture").copyArray(this.tmp_geo.vertices.map(function (v) {
+					return v.secondTexture;
+				}));
+				this.mesh.geometry.getAttribute("secondTexture").needsUpdate = true;
+				this.mesh.geometry.computeVertexNormals();
+				util.updateColors(this.mesh);
+			}
+		}]);
+
+		return Game;
+	}();
+
+/***/ },
+/* 30 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.GameController = undefined;
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _jqueryMousewheel = __webpack_require__(8);
+	
+	var $$ = _interopRequireWildcard(_jqueryMousewheel);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var EDGE_POS = constants.VERTEX_SIZE * 0.5 - constants.SECTION_SIZE;
+	
+	var GameController = exports.GameController = function () {
+		function GameController(gravis) {
+			var _this = this;
+	
+			_classCallCheck(this, GameController);
+	
+			this.gravis = gravis;
+			this.fw = this.bw = this.left = this.right = false;
+			this.direction = new _three2.default.Vector3(0, 0, 0);
+			this.x = 8.5 * constants.VERTEX_SIZE;
+			this.y = 3.5 * constants.VERTEX_SIZE;
+	
+			(0, _jquery2.default)("canvas").mousemove(function (event) {
+				var mx = event.originalEvent.movementX;
+				var my = event.originalEvent.movementY;
+				_this.theta += mx * 0.01;
+				_this.gravis.yaw.rotation.z -= mx * 0.01;
+				_this.gravis.pitch.rotation.x -= my * 0.01;
+			});
+			(0, _jquery2.default)(document).keydown(function (event) {
+				switch (event.keyCode) {
+					case 87:
+						_this.fw = true;
+						break;
+					case 83:
+						_this.bw = true;
+						break;
+					case 65:
+						_this.left = true;
+						break;
+					case 68:
+						_this.right = true;
+						break;
+				}
+			});
+			(0, _jquery2.default)(document).keyup(function (event) {
+				//console.log(event.keyCode);
+				switch (event.keyCode) {
+					case 87:
+						_this.fw = false;
+						break;
+					case 83:
+						_this.bw = false;
+						break;
+					case 65:
+						_this.left = false;
+						break;
+					case 68:
+						_this.right = false;
+						break;
+					case 79:
+						if ((0, _jquery2.default)("#region_buttons").is(":visible")) {
+							_this.gravis.viewer.view.save(_this.rx, _this.ry);
+						}
+						break;
+				}
+			});
+		}
+	
+		_createClass(GameController, [{
+			key: 'start',
+			value: function start() {
+				this.gravis.overmap.hide();
+				this.gravis.viewer.drawAt(this.x, this.y);
+			}
+		}, {
+			key: 'update',
+			value: function update(delta) {
+				this.direction.set(0, 0, 0);
+				if (this.fw) this.direction.y = 1;
+				if (this.bw) this.direction.y = -1;
+				if (this.right) this.direction.x = 1;
+				if (this.left) this.direction.x = -1;
+	
+				if (this.fw || this.bw || this.left || this.right) {
+					var speed = 30 * delta;
+					this.gravis.yaw.translateOnAxis(this.direction, speed);
+	
+					if (this.gravis.yaw.position.x < -EDGE_POS || this.gravis.yaw.position.y < -EDGE_POS || this.gravis.yaw.position.x > EDGE_POS || this.gravis.yaw.position.y > EDGE_POS) {
+						this.x += this.gravis.yaw.position.x;
+						this.y += this.gravis.yaw.position.y;
+						this.gravis.yaw.position.x = 0;
+						this.gravis.yaw.position.y = 0;
+						this.gravis.viewer.drawAt(this.x, this.y);
+					}
+				}
+			}
+		}]);
+
+		return GameController;
+	}();
+
+/***/ },
+/* 31 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.RegionCache = undefined;
+	
+	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _WaterShader = __webpack_require__(26);
+	
+	var water = _interopRequireWildcard(_WaterShader);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	var _region = __webpack_require__(9);
+	
+	var regionModel = _interopRequireWildcard(_region);
+	
+	var _section = __webpack_require__(12);
+	
+	var sectionDef = _interopRequireWildcard(_section);
+	
+	var _view = __webpack_require__(11);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var ExpandedRegion = function ExpandedRegion(expandedRegion) {
+		_classCallCheck(this, ExpandedRegion);
+	
+		this.accessTime = Date.now();
+		this.points = [];
+		for (var _x = 0; _x < constants.VERTEX_SIZE; _x++) {
+			var a = [];
+			this.points.push(a);
+			for (var _y = 0; _y < constants.VERTEX_SIZE; _y++) {
+				a.push({
+					z: 0,
+					type: 0,
+					road: 0,
+					beach: 0,
+					secondTexture: 0
+				});
+			}
+		}
+	
+		var i = 0;
+		var x = 0;
+		var y = 0;
+		while (i < expandedRegion.region.length) {
+			var p = this.points[x][y];
+			p.z = expandedRegion.region[i++];
+			p.type = expandedRegion.region[i++];
+			p.road = expandedRegion.region[i++];
+			p.beach = expandedRegion.region[i++];
+			p.secondTexture = expandedRegion.region[i++];
+	
+			y++;
+			if (y >= constants.VERTEX_SIZE) {
+				y = 0;
+				x++;
+			}
+		}
+	};
+	
+	var CACHE_SIZE = 12;
+	
+	var RegionCache = exports.RegionCache = function () {
+		function RegionCache() {
+			_classCallCheck(this, RegionCache);
+	
+			this.regions = {};
+		}
+	
+		_createClass(RegionCache, [{
+			key: 'load',
+			value: function load(regionX, regionY, onSuccess) {
+				var _this = this;
+	
+				var index = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
+	
+				if (index < constants.REGION_OFFSETS.length) {
+					(function () {
+						// load regions into the view
+	
+						var _constants$REGION_OFF = _slicedToArray(constants.REGION_OFFSETS[index], 2);
+	
+						var dx = _constants$REGION_OFF[0];
+						var dy = _constants$REGION_OFF[1];
+	
+						var rx = regionX + dx;
+						var ry = regionY + dy;
+						if (rx < 0) rx += constants.REGION_COUNT;
+						if (ry < 0) ry += constants.REGION_COUNT;
+						if (rx >= constants.REGION_COUNT - 1) rx -= constants.REGION_COUNT;
+						if (ry >= constants.REGION_COUNT - 1) ry -= constants.REGION_COUNT;
+						var key = "" + rx + "," + ry;
+	
+						if (_this.regions[key] == null) {
+							_this.loadExpandedOrRegularRegion(rx, ry, function (expandedRegion) {
+								_this.regions[key] = new ExpandedRegion(expandedRegion);
+								_this.trim();
+								console.log("+++ LOADED " + key);
+								_this.load(regionX, regionY, onSuccess, index + 1);
+							}, function (region) {
+								console.log("Could not load region " + rx + "," + ry);
+							});
+						} else {
+							console.log("+++ FROM CACHE " + key);
+							_this.load(regionX, regionY, onSuccess, index + 1);
+						}
+					})();
+				} else {
+					onSuccess();
+				}
+			}
+		}, {
+			key: 'loadExpandedOrRegularRegion',
+			value: function loadExpandedOrRegularRegion(rx, ry, onSuccess, onFailure) {
+				var name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json";
+				_jquery2.default.ajax({
+					type: 'GET',
+					dataType: 'json',
+					url: name + "?cb=" + window.cb,
+					success: function success(expandedRegion) {
+						onSuccess(expandedRegion);
+					},
+					error: function error(err) {
+						regionModel.Region.load(rx, ry, function (region) {
+							onFailure(region);
+						});
+					}
+				});
+			}
+	
+			// remove old regions
+	
+		}, {
+			key: 'trim',
+			value: function trim() {
+				var _this2 = this;
+	
+				while (Object.keys(this.regions).length > CACHE_SIZE) {
+					var keys = Object.keys(this.regions);
+					var oldest = keys.reduce(function (prev, current) {
+						if (!current || !prev || _this2.regions[current].accessTime < _this2.regions[prev].accessTime) {
+							return current;
+						} else {
+							return prev;
+						}
+					}, null);
+					if (oldest) delete this.regions[oldest];
+				}
+				console.log("+++ CACHE SIZE is " + Object.keys(this.regions).length);
+			}
+		}, {
+			key: 'get',
+			value: function get(regionX, regionY, pointX, pointY) {
+				try {
+					return this.regions["" + regionX + "," + regionY].points[pointX][pointY];
+				} catch (exc) {
+					debugger;
+				}
+			}
+		}]);
+
+		return RegionCache;
+	}();
 
 /***/ }
 /******/ ]);

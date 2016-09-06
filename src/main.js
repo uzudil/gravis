@@ -7,12 +7,16 @@ import Stats from 'stats.js';
 import * as controller from 'controller';
 import * as overmap from 'overmap';
 import * as regioneditor from 'regioneditor';
+import * as game from 'game';
+import * as game_controller from 'game_controller';
 import * as skybox from 'skybox';
 
 class Gravis {
-	constructor() {
+	constructor(view, ctrl) {
 		console.log(`Gravis (c) 2016 v${constants.VERSION}`);
 		window.cb = "" + constants.VERSION;
+		this.viewMaker = view;
+		this.controllerMaker = ctrl;
 		new model.Models((models) => {
 			this.loadTextures(() => {
 				this.loadShaders(() => {
@@ -138,9 +142,9 @@ class Gravis {
 		this.dirLight2.position.set(1, -1, .8 );
 		this.scene.add( this.dirLight2 );
 
-		this.controller = new controller.Controller(this);
+		this.controller = this.controllerMaker(this);
 		this.overmap = new overmap.OverMap(this);
-		this.regionEditor = new regioneditor.RegionEditor(this);
+		this.viewer = this.viewMaker(this);
 
 		// camera rotation
 		this.camera.rotation.set( 0, 0, 0 );
@@ -175,7 +179,7 @@ class Gravis {
 		var delta = ( time - this.prevTime ) / 1000;
 		this.prevTime = time;
 
-		this.regionEditor.update(time, delta);
+		this.viewer.update(time, delta);
 
 		this.controller.update(delta);
 		this.renderer.render(this.scene, this.camera);
@@ -190,5 +194,13 @@ class Gravis {
 }
 
 $(document).ready(function() {
-	window.gravis = new Gravis();
+	let view, ctrl;
+	if(window.location.pathname.indexOf("editor") >= 0) {
+		view = (gravis) => new regioneditor.RegionEditor(gravis);
+		ctrl = (gravis) => new controller.Controller(gravis);
+	} else {
+		view = (gravis) => new game.Game(gravis);
+		ctrl = (gravis) => new game_controller.GameController(gravis);
+	}
+	window.gravis = new Gravis(view, ctrl);
 });
