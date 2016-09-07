@@ -194,6 +194,7 @@ class Gravis {
 }
 
 $(document).ready(function() {
+	util.initBinaryLoader();
 	let view, ctrl;
 	if(window.location.pathname.indexOf("editor") >= 0) {
 		view = (gravis) => new regioneditor.RegionEditor(gravis);

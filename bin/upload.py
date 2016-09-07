@@ -38,16 +38,17 @@ class MyHandler(BaseHTTPServer.BaseHTTPRequestHandler):
             expanded = postvars['expanded'][0]
             val = postvars['file'][0]
             print "+++ Saving compound=", name, " size=", len(val)
-            with open('../models/%s/%s.json' % ('expanded_regions' if expanded == '1' else 'regions', name), 'w') as file_:
+            p = 'expanded_regions' if expanded == '1' else 'regions'
+            with open('../models/%s/%s.json' % (p, name), 'w') as file_:
                 file_.write(val)
 
             # zip file
-            # print "+++ Creating archive..."
-            # commands.getoutput("pushd ../models/compounds; zip %s.json.zip %s.json; popd" % (name, name))
+            print "+++ Creating archive..."
+            commands.getoutput("pushd ../models/%s; zip %s.json.zip %s.json; popd" % (p, name, name))
 
             # keep only the zip file
-            # print "+++ Removing original..."
-            # os.remove('../models/compounds/%s.json' % name)
+            print "+++ Removing original..."
+            os.remove('../models/compounds/%s.json' % name)
 
             print "+++ Done."
             body = 'ok'

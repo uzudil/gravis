@@ -6,6 +6,7 @@ import * as util from 'util';
 import * as regionModel from 'region';
 import * as sectionDef from 'section';
 import { View } from 'view';
+import JSZip from 'jszip';
 
 class ExpandedRegion {
 
@@ -88,13 +89,21 @@ export class RegionCache {
 	}
 
 	loadExpandedOrRegularRegion(rx, ry, onSuccess, onFailure) {
-		let name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json";
+		let name = "region" + rx.toString(16) + ry.toString(16) + ".json";
+		let path = "/models/expanded_regions/" + name + ".zip";
 		$.ajax({
+			dataType: "binary",
+			processData: false,
+			responseType: "arraybuffer",
 			type: 'GET',
-			dataType: 'json',
-			url: name + "?cb=" + window.cb,
-			success: (expandedRegion) => {
-				onSuccess(expandedRegion);
+			url: path + "?cb=" + window.cb,
+			success: (data) => {
+				var new_zip = new JSZip();
+				new_zip.loadAsync(data).then(function(zip) {
+					new_zip.file(name).async("string").then((expandedRegion) => {
+						onSuccess(JSON.parse(expandedRegion));
+					});
+				});
 			},
 			error: (err) => {
 				regionModel.Region.load(rx, ry, (region) => {
