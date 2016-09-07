@@ -8,8 +8,9 @@ import * as sectionDef from 'section';
 import { View } from 'view';
 
 class ExpandedRegion {
+
 	constructor(expandedRegion) {
-		this.accessTime = Date.now();
+		this.index = Date.now();
 		this.points = [];
 		for(let x = 0; x < constants.VERTEX_SIZE; x++) {
 			let a = [];
@@ -43,6 +44,10 @@ class ExpandedRegion {
 			}
 		}
 	}
+
+	touch() {
+		this.index = Date.now();
+	}
 }
 
 const CACHE_SIZE = 12;
@@ -74,6 +79,7 @@ export class RegionCache {
 				});
 			} else {
 				console.log("+++ FROM CACHE " + key);
+				this.regions[key].touch();
 				this.load(regionX, regionY, onSuccess, index + 1);
 			}
 		} else {
@@ -103,13 +109,16 @@ export class RegionCache {
 		while(Object.keys(this.regions).length > CACHE_SIZE) {
 			let keys = Object.keys(this.regions);
 			let oldest = keys.reduce((prev, current) => {
-				if(!current || !prev || this.regions[current].accessTime < this.regions[prev].accessTime) {
+				if(!current || !prev || this.regions[current].index < this.regions[prev].index) {
 					return current
 				} else {
 					return prev;
 				}
 			}, null);
-			if(oldest) delete this.regions[oldest];
+			if(oldest) {
+				console.log("+++ TRIMMING index=" + this.regions[oldest].index + " key=" + oldest);
+				delete this.regions[oldest];
+			}
 		}
 		console.log("+++ CACHE SIZE is " + Object.keys(this.regions).length);
 	}

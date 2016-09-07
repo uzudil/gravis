@@ -112,10 +112,10 @@ export class Game {
 				if(ry > constants.REGION_COUNT - 1) ry -= constants.REGION_COUNT;
 
 				let p = this.regionCache.get(rx, ry, (px % constants.VERTEX_SIZE)|0, (py % constants.VERTEX_SIZE)|0);
-				if((dx == 0 && dy == 0) || (dx == 0 && dy == constants.VERTEX_SIZE - 1) ||
-					(dx == constants.VERTEX_SIZE - 1 && dy == 0) || (dx == constants.VERTEX_SIZE - 1 && dy == constants.VERTEX_SIZE - 1)) {
-					console.log("pos: " + dx + "," + dy + " point: ", p);
-				}
+				//if((dx == 0 && dy == 0) || (dx == 0 && dy == constants.VERTEX_SIZE - 1) ||
+				//	(dx == constants.VERTEX_SIZE - 1 && dy == 0) || (dx == constants.VERTEX_SIZE - 1 && dy == constants.VERTEX_SIZE - 1)) {
+				//	console.log("pos: " + dx + "," + dy + " point: ", p);
+				//}
 				this.copyToVertex(dx, dy, p);
 			}
 		}
