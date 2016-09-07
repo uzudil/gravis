@@ -83,6 +83,10 @@ export class Game {
 		this.obj.add( this.mirrorMesh );
 	}
 
+	getCameraZ() {
+		return 35;
+	}
+
 	update(time, delta) {
 		this.water.material.uniforms.time.value += 1.0 / 60.0;
 		this.water.render();

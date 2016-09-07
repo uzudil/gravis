@@ -84,7 +84,7 @@
 	
 	var regioneditor = _interopRequireWildcard(_regioneditor);
 	
-	var _game = __webpack_require__(29);
+	var _game = __webpack_require__(28);
 	
 	var game = _interopRequireWildcard(_game);
 	
@@ -92,7 +92,7 @@
 	
 	var game_controller = _interopRequireWildcard(_game_controller);
 	
-	var _skybox = __webpack_require__(28);
+	var _skybox = __webpack_require__(31);
 	
 	var skybox = _interopRequireWildcard(_skybox);
 	
@@ -298,7 +298,7 @@
 				this.yaw.rotation.z = Math.PI;
 				this.scene.add(this.yaw);
 	
-				this.yaw.position.set(0, 0, 45);
+				this.yaw.position.set(0, 0, this.viewer.getCameraZ());
 	
 				this.controller.start();
 	
@@ -56579,6 +56579,11 @@
 		}
 	
 		_createClass(RegionEditor, [{
+			key: 'getCameraZ',
+			value: function getCameraZ() {
+				return 45;
+			}
+		}, {
 			key: 'update',
 			value: function update(time, delta) {
 				TIME_VEC.x += THE_CLOCK.getDelta();
@@ -57188,69 +57193,6 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
-	exports.SkyBox = undefined;
-	
-	var _three = __webpack_require__(1);
-	
-	var _three2 = _interopRequireDefault(_three);
-	
-	var _util = __webpack_require__(5);
-	
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-	
-	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-	
-	var SkyBox = exports.SkyBox = function SkyBox(scene) {
-		var _this = this;
-	
-		_classCallCheck(this, SkyBox);
-	
-		var loader = new _three2.default.ImageLoader();
-		loader.load('../images/skyboxsun25degtest.png', function (image) {
-			var getSide = function getSide(x, y) {
-	
-				var size = 1024;
-	
-				var canvas = document.createElement('canvas');
-				canvas.width = size;
-				canvas.height = size;
-	
-				var context = canvas.getContext('2d');
-				context.drawImage(image, -x * size, -y * size);
-	
-				return canvas;
-			};
-	
-			var canvases = [getSide(2, 1), getSide(0, 1), getSide(1, 0), getSide(1, 2), getSide(1, 1), getSide(3, 1)];
-	
-			var materialArray = [];
-			for (var i = 0; i < 6; i++) {
-				var tex = new _three2.default.Texture(canvases[i]);
-				tex.format = _three2.default.RGBFormat;
-				tex.needsUpdate = true;
-				materialArray.push(new _three2.default.MeshBasicMaterial({
-					map: tex,
-					side: _three2.default.BackSide,
-					depthWrite: false
-				}));
-			}
-	
-			_this.skyBox = new _three2.default.Mesh(new _three2.default.BoxGeometry(90000, 90000, 90000), new _three2.default.MeshFaceMaterial(materialArray));
-			_this.skyBox.rotation.x = Math.PI / 2;
-	
-			scene.add(_this.skyBox);
-		});
-	};
-
-/***/ },
-/* 29 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-	
-	Object.defineProperty(exports, "__esModule", {
-		value: true
-	});
 	exports.Game = undefined;
 	
 	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
@@ -57283,7 +57225,7 @@
 	
 	var sectionDef = _interopRequireWildcard(_section);
 	
-	var _region_cache = __webpack_require__(31);
+	var _region_cache = __webpack_require__(29);
 	
 	var region_cache = _interopRequireWildcard(_region_cache);
 	
@@ -57387,6 +57329,11 @@
 		}
 	
 		_createClass(Game, [{
+			key: 'getCameraZ',
+			value: function getCameraZ() {
+				return 35;
+			}
+		}, {
 			key: 'update',
 			value: function update(time, delta) {
 				this.water.material.uniforms.time.value += 1.0 / 60.0;
@@ -57424,9 +57371,10 @@
 						if (ry > constants.REGION_COUNT - 1) ry -= constants.REGION_COUNT;
 	
 						var p = this.regionCache.get(rx, ry, px % constants.VERTEX_SIZE | 0, py % constants.VERTEX_SIZE | 0);
-						if (dx == 0 && dy == 0 || dx == 0 && dy == constants.VERTEX_SIZE - 1 || dx == constants.VERTEX_SIZE - 1 && dy == 0 || dx == constants.VERTEX_SIZE - 1 && dy == constants.VERTEX_SIZE - 1) {
-							console.log("pos: " + dx + "," + dy + " point: ", p);
-						}
+						//if((dx == 0 && dy == 0) || (dx == 0 && dy == constants.VERTEX_SIZE - 1) ||
+						//	(dx == constants.VERTEX_SIZE - 1 && dy == 0) || (dx == constants.VERTEX_SIZE - 1 && dy == constants.VERTEX_SIZE - 1)) {
+						//	console.log("pos: " + dx + "," + dy + " point: ", p);
+						//}
 						this.copyToVertex(dx, dy, p);
 					}
 				}
@@ -57473,6 +57421,214 @@
 	}();
 
 /***/ },
+/* 29 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, "__esModule", {
+		value: true
+	});
+	exports.RegionCache = undefined;
+	
+	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+	
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	
+	var _three = __webpack_require__(1);
+	
+	var _three2 = _interopRequireDefault(_three);
+	
+	var _WaterShader = __webpack_require__(26);
+	
+	var water = _interopRequireWildcard(_WaterShader);
+	
+	var _jquery = __webpack_require__(2);
+	
+	var _jquery2 = _interopRequireDefault(_jquery);
+	
+	var _constants = __webpack_require__(3);
+	
+	var constants = _interopRequireWildcard(_constants);
+	
+	var _util = __webpack_require__(5);
+	
+	var util = _interopRequireWildcard(_util);
+	
+	var _region = __webpack_require__(9);
+	
+	var regionModel = _interopRequireWildcard(_region);
+	
+	var _section = __webpack_require__(12);
+	
+	var sectionDef = _interopRequireWildcard(_section);
+	
+	var _view = __webpack_require__(11);
+	
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+	
+	var ExpandedRegion = function () {
+		function ExpandedRegion(expandedRegion) {
+			_classCallCheck(this, ExpandedRegion);
+	
+			this.index = Date.now();
+			this.points = [];
+			for (var _x = 0; _x < constants.VERTEX_SIZE; _x++) {
+				var a = [];
+				this.points.push(a);
+				for (var _y = 0; _y < constants.VERTEX_SIZE; _y++) {
+					a.push({
+						z: 0,
+						type: 0,
+						road: 0,
+						beach: 0,
+						secondTexture: 0
+					});
+				}
+			}
+	
+			var i = 0;
+			var x = 0;
+			var y = 0;
+			while (i < expandedRegion.region.length) {
+				var p = this.points[x][y];
+				p.z = expandedRegion.region[i++];
+				p.type = expandedRegion.region[i++];
+				p.road = expandedRegion.region[i++];
+				p.beach = expandedRegion.region[i++];
+				p.secondTexture = expandedRegion.region[i++];
+	
+				y++;
+				if (y >= constants.VERTEX_SIZE) {
+					y = 0;
+					x++;
+				}
+			}
+		}
+	
+		_createClass(ExpandedRegion, [{
+			key: 'touch',
+			value: function touch() {
+				this.index = Date.now();
+			}
+		}]);
+	
+		return ExpandedRegion;
+	}();
+	
+	var CACHE_SIZE = 12;
+	
+	var RegionCache = exports.RegionCache = function () {
+		function RegionCache() {
+			_classCallCheck(this, RegionCache);
+	
+			this.regions = {};
+		}
+	
+		_createClass(RegionCache, [{
+			key: 'load',
+			value: function load(regionX, regionY, onSuccess) {
+				var _this = this;
+	
+				var index = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
+	
+				if (index < constants.REGION_OFFSETS.length) {
+					(function () {
+						// load regions into the view
+	
+						var _constants$REGION_OFF = _slicedToArray(constants.REGION_OFFSETS[index], 2);
+	
+						var dx = _constants$REGION_OFF[0];
+						var dy = _constants$REGION_OFF[1];
+	
+						var rx = regionX + dx;
+						var ry = regionY + dy;
+						if (rx < 0) rx += constants.REGION_COUNT;
+						if (ry < 0) ry += constants.REGION_COUNT;
+						if (rx >= constants.REGION_COUNT - 1) rx -= constants.REGION_COUNT;
+						if (ry >= constants.REGION_COUNT - 1) ry -= constants.REGION_COUNT;
+						var key = "" + rx + "," + ry;
+	
+						if (_this.regions[key] == null) {
+							_this.loadExpandedOrRegularRegion(rx, ry, function (expandedRegion) {
+								_this.regions[key] = new ExpandedRegion(expandedRegion);
+								_this.trim();
+								console.log("+++ LOADED " + key);
+								_this.load(regionX, regionY, onSuccess, index + 1);
+							}, function (region) {
+								console.log("Could not load region " + rx + "," + ry);
+							});
+						} else {
+							console.log("+++ FROM CACHE " + key);
+							_this.regions[key].touch();
+							_this.load(regionX, regionY, onSuccess, index + 1);
+						}
+					})();
+				} else {
+					onSuccess();
+				}
+			}
+		}, {
+			key: 'loadExpandedOrRegularRegion',
+			value: function loadExpandedOrRegularRegion(rx, ry, onSuccess, onFailure) {
+				var name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json";
+				_jquery2.default.ajax({
+					type: 'GET',
+					dataType: 'json',
+					url: name + "?cb=" + window.cb,
+					success: function success(expandedRegion) {
+						onSuccess(expandedRegion);
+					},
+					error: function error(err) {
+						regionModel.Region.load(rx, ry, function (region) {
+							onFailure(region);
+						});
+					}
+				});
+			}
+	
+			// remove old regions
+	
+		}, {
+			key: 'trim',
+			value: function trim() {
+				var _this2 = this;
+	
+				while (Object.keys(this.regions).length > CACHE_SIZE) {
+					var keys = Object.keys(this.regions);
+					var oldest = keys.reduce(function (prev, current) {
+						if (!current || !prev || _this2.regions[current].index < _this2.regions[prev].index) {
+							return current;
+						} else {
+							return prev;
+						}
+					}, null);
+					if (oldest) {
+						console.log("+++ TRIMMING index=" + this.regions[oldest].index + " key=" + oldest);
+						delete this.regions[oldest];
+					}
+				}
+				console.log("+++ CACHE SIZE is " + Object.keys(this.regions).length);
+			}
+		}, {
+			key: 'get',
+			value: function get(regionX, regionY, pointX, pointY) {
+				try {
+					return this.regions["" + regionX + "," + regionY].points[pointX][pointY];
+				} catch (exc) {
+					debugger;
+				}
+			}
+		}]);
+
+		return RegionCache;
+	}();
+
+/***/ },
 /* 30 */
 /***/ function(module, exports, __webpack_require__) {
 
@@ -57511,7 +57667,7 @@
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var EDGE_POS = constants.VERTEX_SIZE * 0.5 - constants.SECTION_SIZE;
+	var EDGE_POS = constants.VERTEX_SIZE * 0.5 - constants.SECTION_SIZE * 5;
 	
 	var GameController = exports.GameController = function () {
 		function GameController(gravis) {
@@ -57530,7 +57686,7 @@
 				var my = event.originalEvent.movementY;
 				_this.theta += mx * 0.01;
 				_this.gravis.yaw.rotation.z -= mx * 0.01;
-				_this.gravis.pitch.rotation.x -= my * 0.01;
+				//this.gravis.pitch.rotation.x -= my * 0.01;
 			});
 			(0, _jquery2.default)(document).keydown(function (event) {
 				switch (event.keyCode) {
@@ -57614,189 +57770,59 @@
 	Object.defineProperty(exports, "__esModule", {
 		value: true
 	});
-	exports.RegionCache = undefined;
-	
-	var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-	
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+	exports.SkyBox = undefined;
 	
 	var _three = __webpack_require__(1);
 	
 	var _three2 = _interopRequireDefault(_three);
 	
-	var _WaterShader = __webpack_require__(26);
-	
-	var water = _interopRequireWildcard(_WaterShader);
-	
-	var _jquery = __webpack_require__(2);
-	
-	var _jquery2 = _interopRequireDefault(_jquery);
-	
-	var _constants = __webpack_require__(3);
-	
-	var constants = _interopRequireWildcard(_constants);
-	
 	var _util = __webpack_require__(5);
-	
-	var util = _interopRequireWildcard(_util);
-	
-	var _region = __webpack_require__(9);
-	
-	var regionModel = _interopRequireWildcard(_region);
-	
-	var _section = __webpack_require__(12);
-	
-	var sectionDef = _interopRequireWildcard(_section);
-	
-	var _view = __webpack_require__(11);
-	
-	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 	
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 	
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 	
-	var ExpandedRegion = function ExpandedRegion(expandedRegion) {
-		_classCallCheck(this, ExpandedRegion);
+	var SkyBox = exports.SkyBox = function SkyBox(scene) {
+		var _this = this;
 	
-		this.accessTime = Date.now();
-		this.points = [];
-		for (var _x = 0; _x < constants.VERTEX_SIZE; _x++) {
-			var a = [];
-			this.points.push(a);
-			for (var _y = 0; _y < constants.VERTEX_SIZE; _y++) {
-				a.push({
-					z: 0,
-					type: 0,
-					road: 0,
-					beach: 0,
-					secondTexture: 0
-				});
+		_classCallCheck(this, SkyBox);
+	
+		var loader = new _three2.default.ImageLoader();
+		loader.load('../images/skyboxsun25degtest.png', function (image) {
+			var getSide = function getSide(x, y) {
+	
+				var size = 1024;
+	
+				var canvas = document.createElement('canvas');
+				canvas.width = size;
+				canvas.height = size;
+	
+				var context = canvas.getContext('2d');
+				context.drawImage(image, -x * size, -y * size);
+	
+				return canvas;
+			};
+	
+			var canvases = [getSide(2, 1), getSide(0, 1), getSide(1, 0), getSide(1, 2), getSide(1, 1), getSide(3, 1)];
+	
+			var materialArray = [];
+			for (var i = 0; i < 6; i++) {
+				var tex = new _three2.default.Texture(canvases[i]);
+				tex.format = _three2.default.RGBFormat;
+				tex.needsUpdate = true;
+				materialArray.push(new _three2.default.MeshBasicMaterial({
+					map: tex,
+					side: _three2.default.BackSide,
+					depthWrite: false
+				}));
 			}
-		}
 	
-		var i = 0;
-		var x = 0;
-		var y = 0;
-		while (i < expandedRegion.region.length) {
-			var p = this.points[x][y];
-			p.z = expandedRegion.region[i++];
-			p.type = expandedRegion.region[i++];
-			p.road = expandedRegion.region[i++];
-			p.beach = expandedRegion.region[i++];
-			p.secondTexture = expandedRegion.region[i++];
+			_this.skyBox = new _three2.default.Mesh(new _three2.default.BoxGeometry(90000, 90000, 90000), new _three2.default.MeshFaceMaterial(materialArray));
+			_this.skyBox.rotation.x = Math.PI / 2;
 	
-			y++;
-			if (y >= constants.VERTEX_SIZE) {
-				y = 0;
-				x++;
-			}
-		}
+			scene.add(_this.skyBox);
+		});
 	};
-	
-	var CACHE_SIZE = 12;
-	
-	var RegionCache = exports.RegionCache = function () {
-		function RegionCache() {
-			_classCallCheck(this, RegionCache);
-	
-			this.regions = {};
-		}
-	
-		_createClass(RegionCache, [{
-			key: 'load',
-			value: function load(regionX, regionY, onSuccess) {
-				var _this = this;
-	
-				var index = arguments.length <= 3 || arguments[3] === undefined ? 0 : arguments[3];
-	
-				if (index < constants.REGION_OFFSETS.length) {
-					(function () {
-						// load regions into the view
-	
-						var _constants$REGION_OFF = _slicedToArray(constants.REGION_OFFSETS[index], 2);
-	
-						var dx = _constants$REGION_OFF[0];
-						var dy = _constants$REGION_OFF[1];
-	
-						var rx = regionX + dx;
-						var ry = regionY + dy;
-						if (rx < 0) rx += constants.REGION_COUNT;
-						if (ry < 0) ry += constants.REGION_COUNT;
-						if (rx >= constants.REGION_COUNT - 1) rx -= constants.REGION_COUNT;
-						if (ry >= constants.REGION_COUNT - 1) ry -= constants.REGION_COUNT;
-						var key = "" + rx + "," + ry;
-	
-						if (_this.regions[key] == null) {
-							_this.loadExpandedOrRegularRegion(rx, ry, function (expandedRegion) {
-								_this.regions[key] = new ExpandedRegion(expandedRegion);
-								_this.trim();
-								console.log("+++ LOADED " + key);
-								_this.load(regionX, regionY, onSuccess, index + 1);
-							}, function (region) {
-								console.log("Could not load region " + rx + "," + ry);
-							});
-						} else {
-							console.log("+++ FROM CACHE " + key);
-							_this.load(regionX, regionY, onSuccess, index + 1);
-						}
-					})();
-				} else {
-					onSuccess();
-				}
-			}
-		}, {
-			key: 'loadExpandedOrRegularRegion',
-			value: function loadExpandedOrRegularRegion(rx, ry, onSuccess, onFailure) {
-				var name = "/models/expanded_regions/region" + rx.toString(16) + ry.toString(16) + ".json";
-				_jquery2.default.ajax({
-					type: 'GET',
-					dataType: 'json',
-					url: name + "?cb=" + window.cb,
-					success: function success(expandedRegion) {
-						onSuccess(expandedRegion);
-					},
-					error: function error(err) {
-						regionModel.Region.load(rx, ry, function (region) {
-							onFailure(region);
-						});
-					}
-				});
-			}
-	
-			// remove old regions
-	
-		}, {
-			key: 'trim',
-			value: function trim() {
-				var _this2 = this;
-	
-				while (Object.keys(this.regions).length > CACHE_SIZE) {
-					var keys = Object.keys(this.regions);
-					var oldest = keys.reduce(function (prev, current) {
-						if (!current || !prev || _this2.regions[current].accessTime < _this2.regions[prev].accessTime) {
-							return current;
-						} else {
-							return prev;
-						}
-					}, null);
-					if (oldest) delete this.regions[oldest];
-				}
-				console.log("+++ CACHE SIZE is " + Object.keys(this.regions).length);
-			}
-		}, {
-			key: 'get',
-			value: function get(regionX, regionY, pointX, pointY) {
-				try {
-					return this.regions["" + regionX + "," + regionY].points[pointX][pointY];
-				} catch (exc) {
-					debugger;
-				}
-			}
-		}]);
-
-		return RegionCache;
-	}();
 
 /***/ }
 /******/ ]);

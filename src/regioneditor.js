@@ -92,6 +92,10 @@ export class RegionEditor {
 		this.obj.add( this.mirrorMesh );
 	}
 
+	getCameraZ() {
+		return 45;
+	}
+
 	update (time, delta) {
 		TIME_VEC.x += THE_CLOCK.getDelta();
 

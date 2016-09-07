@@ -4,7 +4,7 @@ import * as $$ from 'jquery-mousewheel';
 import * as constants from 'constants';
 import * as util from 'util';
 
-const EDGE_POS = constants.VERTEX_SIZE * 0.5 - constants.SECTION_SIZE;
+const EDGE_POS = constants.VERTEX_SIZE * 0.5 - constants.SECTION_SIZE * 5;
 export class GameController {
 	constructor(gravis) {
 		this.gravis = gravis;
@@ -18,7 +18,7 @@ export class GameController {
 			let my = event.originalEvent.movementY;
 			this.theta += mx * 0.01;
 			this.gravis.yaw.rotation.z -= mx * 0.01;
-			this.gravis.pitch.rotation.x -= my * 0.01;
+			//this.gravis.pitch.rotation.x -= my * 0.01;
 		});
 		$(document).keydown(( event ) => {
 			switch (event.keyCode) {

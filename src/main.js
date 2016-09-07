@@ -162,7 +162,7 @@ class Gravis {
 		this.yaw.rotation.z = Math.PI;
 		this.scene.add(this.yaw);
 
-		this.yaw.position.set(0, 0, 45);
+		this.yaw.position.set(0, 0, this.viewer.getCameraZ());
 
 		this.controller.start();
 
