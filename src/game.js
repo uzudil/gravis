@@ -6,6 +6,8 @@ import * as util from 'util';
 import * as regionModel from 'region';
 import * as sectionDef from 'section';
 import * as region_cache from 'region_cache';
+import * as seedrandom from 'seedrandom';
+import { TREES } from 'model';
 
 const WATER_Z = 1.5;
 
@@ -25,7 +27,7 @@ export class Game {
 					texture_grass: {type: "t", value: gravis.tex.classicGrass1},
 					texture_grass2: {type: "t", value: gravis.tex.classicGrass2},
 					texture_rock: {type: "t", value: gravis.tex.ground1},
-					texture_road: {type: "t", value: gravis.tex.road2},
+					texture_road: {type: "t", value: gravis.tex.ground2},
 					texture_sand: {type: "t", value: gravis.tex.sand1}
 				},
 				vertexShader: gravis.shaders.map[0],
@@ -51,6 +53,9 @@ export class Game {
 		}
 
 		this.obj.add(this.mesh);
+
+		this.staticModels = new THREE.Object3D();
+		this.obj.add(this.staticModels);
 
 		// custom attribute for how 'road' a vertex is
 		this.road = new Float32Array( this.mesh.geometry.getAttribute("position").array.length );
@@ -97,6 +102,9 @@ export class Game {
 		let regionY = (y / constants.VERTEX_SIZE)|0;
 		// load surrounding regions
 		this.regionCache.load(regionX, regionY, () => {
+			while(this.staticModels.children.length > 0) {
+				this.staticModels.remove(this.staticModels.children[0]);
+			}
 			this.displayAt(x, y);
 		});
 	}
@@ -120,13 +128,13 @@ export class Game {
 				//	(dx == constants.VERTEX_SIZE - 1 && dy == 0) || (dx == constants.VERTEX_SIZE - 1 && dy == constants.VERTEX_SIZE - 1)) {
 				//	console.log("pos: " + dx + "," + dy + " point: ", p);
 				//}
-				this.copyToVertex(dx, dy, p);
+				this.copyToVertex(dx, dy, p, (px)|0, (py)|0);
 			}
 		}
 		this.initAttributes();
 	}
 
-	copyToVertex(vx, vy, point) {
+	copyToVertex(vx, vy, point, absX, absY) {
 		let v = this.vertexGrid[vx + "," + vy];
 		if (v) {
 			v.z = point.z;
@@ -137,6 +145,35 @@ export class Game {
 			v.vx = vx;
 			v.vy = vy;
 		}
+
+		let rnd = new Math.seedrandom("" + absX + "," + absY);
+		if (point.type == sectionDef.SECTION_BY_NAME['forest']) {
+			if(absX % 6 == 0 && absY % 6 == 0 && rnd.quick() > 0.25) {
+				let obj = this.getRandomTreeModel(rnd).createObject();
+				obj.position.x = vx - constants.VERTEX_SIZE / 2 + rnd.quick() * 4 - 2;
+				obj.position.y = vy - constants.VERTEX_SIZE / 2 + rnd.quick() * 4 - 2;
+				let zScale = rnd.quick() * 0.5 - 0.25 + 1.0;
+				let scale = rnd.quick() * 0.4 - 0.2 + 1.0;
+				obj.position.z = 12 * zScale / 2 + 3;
+				obj.scale.set(scale, scale, zScale);
+				obj.rotation.x = (rnd.quick() * 0.1 - 0.05) * Math.PI;
+				obj.rotation.y = (rnd.quick() * 0.1 - 0.05) * Math.PI;
+				this.staticModels.add(obj);
+			} else if(absX % 4 == 0 && absY % 4 == 0 && rnd.quick() > 0.97) {
+				let obj = this.gravis.models.models.rock.createObject();
+				obj.position.x = vx - constants.VERTEX_SIZE / 2 + rnd.quick() * 4 - 2;
+				obj.position.y = vy - constants.VERTEX_SIZE / 2 + rnd.quick() * 4 - 2;
+				obj.position.z = 1 + 3;
+				obj.rotation.z = (rnd.quick() * 0.5 - 0.25) * Math.PI;
+				let scale = rnd.quick() * 0.4 - 0.2 + 1.0;
+				obj.scale.set(scale, scale, 1);
+				this.staticModels.add(obj);
+			}
+		}
+	}
+
+	getRandomTreeModel(rnd) {
+		return this.gravis.models.models[TREES[(TREES.length * rnd.quick())|0]];
 	}
 
 	initAttributes() {

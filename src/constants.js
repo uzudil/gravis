@@ -10,10 +10,11 @@ export const AMBIENT_COLOR = new THREE.Color(0x999999);
 export const DIR1_COLOR = new THREE.Color(0xffffff);
 export const DIR2_COLOR = new THREE.Color(0xffe0cc);
 
-export const MATERIAL = new THREE.MeshLambertMaterial({
+export const MATERIAL = new THREE.MeshPhongMaterial({
 	color: 0xffffff,
 	side: THREE.DoubleSide,
-	vertexColors: THREE.VertexColors
+	vertexColors: THREE.VertexColors,
+	shading: THREE.FlatShading
 });
 
 export const WORLD_SIZE = 0x100;

@@ -73,13 +73,13 @@ export class RegionCache {
 				this.loadExpandedOrRegularRegion(rx, ry, (expandedRegion) => {
 					this.regions[key] = new ExpandedRegion(expandedRegion);
 					this.trim();
-					console.log("+++ LOADED " + key);
+					//console.log("+++ LOADED " + key);
 					this.load(regionX, regionY, onSuccess, index + 1);
 				}, (region) => {
 					console.log("Could not load region " + rx + "," + ry);
 				});
 			} else {
-				console.log("+++ FROM CACHE " + key);
+				//console.log("+++ FROM CACHE " + key);
 				this.regions[key].touch();
 				this.load(regionX, regionY, onSuccess, index + 1);
 			}
@@ -125,11 +125,11 @@ export class RegionCache {
 				}
 			}, null);
 			if(oldest) {
-				console.log("+++ TRIMMING index=" + this.regions[oldest].index + " key=" + oldest);
+				//console.log("+++ TRIMMING index=" + this.regions[oldest].index + " key=" + oldest);
 				delete this.regions[oldest];
 			}
 		}
-		console.log("+++ CACHE SIZE is " + Object.keys(this.regions).length);
+		//console.log("+++ CACHE SIZE is " + Object.keys(this.regions).length);
 	}
 
 	get(regionX, regionY, pointX, pointY) {

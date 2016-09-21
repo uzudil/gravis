@@ -2,13 +2,14 @@ import THREE from 'three';
 import * as util from 'util';
 import * as constants from 'constants';
 
-/*
- To use colors, use the "vertex paint" feature of blender.
- Then, export with vertex colors on (no materials needed.)
- */
-const MODELS = [
-	// "modelA", "modelB", "modelC", ... etc
-];
+const MODELS = {
+	pine: "../models/pine.json",
+	oak: "../models/oak.json",
+	bush: "../models/bush.json",
+	rock: "../models/rock.json",
+};
+
+export const TREES = [ "oak", "pine" ];
 
 export class Models {
 	constructor(onLoad) {
@@ -20,13 +21,13 @@ export class Models {
 			util.stopLoadingUI();
 			this.onLoad(this);
 		} else {
-			for (let name of MODELS) {
-				let model = new Model(name, true);
+			for (let name in MODELS) {
+				let model = new Model(name);
 				model.load((m) => {
 					console.log("Model loaded: " + model);
 					this.models[model.name] = model;
 					util.setLoadingUIProgress(Object.keys(this.models).length / MODELS.length);
-					if (Object.keys(this.models).length == MODELS.length) {
+					if (Object.keys(this.models).length == Object.keys(MODELS).length) {
 						util.stopLoadingUI();
 						this.onLoad(this);
 					}
@@ -37,41 +38,31 @@ export class Models {
 }
 
 export class Model {
-	constructor(name, canCompress) {
+	constructor(name) {
 		this.name = name;
 		this.mesh = null;
 		this.bbox = null;
-		this.canCompress = canCompress;
 	}
 
 	load(onLoad) {
 		var loader = new THREE.JSONLoader();
-		loader.load("models/" + this.name + ".json?cb=" + window.cb, (geometry, materials) => {
-
-			// compress the model a bit by removing stuff we don't need
-			util.compressGeo(geometry);
-
-			if(this.name == "control") {
-				for (let face of geometry.faces) {
-					face["original_color"] = face.color.getHex();
-				}
-			}
-
+		loader.load(MODELS[this.name] + "?cb=" + window.cb, (geometry, materials) => {
 			geometry.computeBoundingBox();
 			var offset = geometry.boundingBox.center().negate();
 			geometry.translate( offset.x, offset.y, 0 );
 
 			geometry.rotateX(Math.PI/2);
-			geometry.rotateZ(-Math.PI/2);
+			//geometry.rotateZ(-Math.PI/2);
 
-			let scale = 50;
-			geometry.scale(scale, scale, scale);
+			//let scale = 50;
+			//geometry.scale(scale, scale, scale);
 			this.mesh = new THREE.Mesh(geometry, constants.MATERIAL);
 			this.bbox = new THREE.Box3().setFromObject(this.mesh);
-			this.w = scale * 2;
-			this.h = scale * 2;
-			this.d = scale * 2;
+			//this.w = scale * 2;
+			//this.h = scale * 2;
+			//this.d = scale * 2;
 			console.log("" + this.name + " size=" + this.w + "," + this.h + "," + this.d);
+
 			onLoad(this);
 		});
 	}
@@ -87,6 +78,6 @@ export class Model {
 	}
 
 	hasBB() {
-		return !this.canCompress;
+		return true;
 	}
 }

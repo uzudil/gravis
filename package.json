@@ -30,6 +30,7 @@
     "jquery-mousewheel": "^3.1.13",
     "jszip": "^3.1.2",
     "noisejs": "^2.1.0",
+    "seedrandom": "^2.4.2",
     "stats.js": "0.0.14-master",
     "three": "^0.76.1"
   }

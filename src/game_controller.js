@@ -51,11 +51,6 @@ export class GameController {
 				case 68:
 					this.right = false;
 					break;
-				case 79:
-					if($("#region_buttons").is(":visible")) {
-						this.gravis.viewer.view.save(this.rx, this.ry);
-					}
-					break;
 			}
 		});
 

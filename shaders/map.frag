@@ -21,7 +21,6 @@ void main() {
     vec4 diffuseRock = texture2D( texture_rock, vUv );
     vec4 diffuseSnow = vec4(.8, .9, 1.0, 1.0);
     vec4 diffuseWater = vec4(.1, .2, 0.5, 1.0);
-//    vec4 diffuseBeach = vec4(.99, .95, 0.5, 1.0);
     vec4 diffuseBeach = texture2D( texture_sand, vUv );
     vec4 diffuseRoad = texture2D( texture_road, vUv );
     vec4 color = diffuseGrass; // grass base

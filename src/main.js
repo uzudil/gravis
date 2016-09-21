@@ -127,10 +127,10 @@ class Gravis {
 
 		// lights
 		this.ambientLight = new THREE.AmbientLight( constants.AMBIENT_COLOR.getHex() );
-		this.ambientLight.intensity = .1;
+		this.ambientLight.intensity = .75;
 		this.scene.add(this.ambientLight);
 
-		this.dirLight1 = new THREE.DirectionalLight( 0xffffbb, 1 );
+		this.dirLight1 = new THREE.DirectionalLight( 0xffffbb, .5 );
 		this.dirLight1.position.set( 1, 1, 1 );
 		this.scene.add( this.dirLight1 );
 
@@ -138,7 +138,7 @@ class Gravis {
 		//this.dirLight1.position.set( 1, 1, 1 );
 		//this.scene.add( this.dirLight1 );
 
-		this.dirLight2 = new THREE.DirectionalLight( constants.DIR2_COLOR.getHex(), 0.3 );
+		this.dirLight2 = new THREE.DirectionalLight( constants.DIR2_COLOR.getHex(), 0.5 );
 		this.dirLight2.position.set(1, -1, .8 );
 		this.scene.add( this.dirLight2 );
 
